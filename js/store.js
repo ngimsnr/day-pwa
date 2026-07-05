@@ -38,20 +38,20 @@ const Store = (() => {
     ['ヨーグルト', '100g', 3.6, 3.0, 4.9],
     ['キウイ', '1個', 0.9, 0.2, 11.5],
     ['ブルーベリー', '50g', 0.3, 0.1, 6.4],
-    ['ベースブレッド', '1個', 13.5, 5.5, 24],
+    ['ベースブレッド', '1個', 13.5, 8.5, 32],
     ['十割そば', '1食', 7.5, 1.2, 43],
     ['鶏むね肉', '100g', 23, 2, 0],
     ['ゆで卵', '1個', 6.5, 5.2, 0.2],
-    ['納豆', '40g', 6.6, 4.0, 4.8],
-    ['キムチ', '50g', 1.2, 0.2, 2.7],
-    ['豆腐', '150g', 10.5, 7.4, 2.3],
-    ['もずく', '70g', 0.2, 0.1, 3.5],
-    ['プロテイン', '1杯', 21, 1.5, 3],
+    ['納豆', '40g', 6.6, 4.2, 5.8],
+    ['キムチ', '50g', 1.6, 0.2, 2.7],
+    ['豆腐', '150g', 7.2, 3.8, 6.6],
+    ['もずく', '70g', 0.1, 0.1, 1.5],
+    ['プロテイン', '1杯', 21.8, 1.8, 3.6],
   ];
 
   function defaultState() {
     return {
-      version: 3,
+      version: 4,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
       templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
@@ -66,6 +66,7 @@ const Store = (() => {
     if (!s) return s;
     if (s.version === 1) migrateV2(s);
     if (s.version === 2) migrateV3(s);
+    if (s.version === 3) migrateV4(s);
     return s;
   }
 
@@ -103,14 +104,24 @@ const Store = (() => {
     s.version = 2;
   }
 
-  // v3: 固定食材の分量と PFC を DEFAULT_FOODS の値に揃える (名前一致で更新)
-  function migrateV3(s) {
+  // 固定食材の分量と PFC を DEFAULT_FOODS の値に揃える (名前一致で更新)
+  function applyDefaultFoods(s) {
     const byName = new Map(DEFAULT_FOODS.map(([name, unit, p, f, c]) => [name, { unit, p, f, c }]));
     s.templates.forEach((t) => {
       const v = t.isDefault && byName.get(t.name);
       if (v) { t.unit = v.unit; t.p = v.p; t.f = v.f; t.c = v.c; }
     });
+  }
+
+  function migrateV3(s) {
+    applyDefaultFoods(s);
     s.version = 3;
+  }
+
+  // v4: 実測 PFC への更新 (2026-07-06)
+  function migrateV4(s) {
+    applyDefaultFoods(s);
+    s.version = 4;
   }
 
   let state;
@@ -294,7 +305,7 @@ const Store = (() => {
 
   function importJSON(text) {
     const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== 3 || !parsed.days || !parsed.templates) {
+    if (!parsed || parsed.version !== 4 || !parsed.days || !parsed.templates) {
       throw new Error('形式が違います');
     }
     state = parsed;
