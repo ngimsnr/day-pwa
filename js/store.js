@@ -198,13 +198,13 @@ const Store = (() => {
 
   /* ---- 日次レコード ---- */
 
-  // その日のレコードを保証する (固定食材は ×1 チェック ON で生成)。冪等。
+  // その日のレコードを保証する (固定食材は全て未チェックで生成し、食べたものにチェックを入れる)。冪等。
   // 今日については、後から追加された固定食材を未チェックで補充する。
   function ensureDay(key) {
     let day = state.days[key];
     if (!day) {
       const food = {};
-      state.templates.filter((t) => t.isDefault).forEach((t) => { food[t.id] = 1; });
+      state.templates.filter((t) => t.isDefault).forEach((t) => { food[t.id] = 0; });
       day = state.days[key] = {
         trade: { stock: 0, future: 0 },
         food,
