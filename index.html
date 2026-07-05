@@ -98,6 +98,7 @@
     <div class="form-group">
       <p class="mini-label">新しい食材</p>
       <div class="form-row"><label for="af-name">名前</label><input id="af-name" type="text" autocomplete="off"></div>
+      <div class="form-row"><label for="af-unit">分量 (任意)</label><input id="af-unit" type="text" placeholder="1個 / 100g など" autocomplete="off"></div>
       <div class="form-row"><label for="af-p">P (g)</label><input id="af-p" type="text" inputmode="decimal" placeholder="0"></div>
       <div class="form-row"><label for="af-f">F (g)</label><input id="af-f" type="text" inputmode="decimal" placeholder="0"></div>
       <div class="form-row"><label for="af-c">C (g)</label><input id="af-c" type="text" inputmode="decimal" placeholder="0"></div>
@@ -123,10 +124,6 @@
       <div class="form-row"><label for="set-c">Carb</label><input id="set-c" type="text" inputmode="numeric"></div>
     </div>
     <div class="form-group">
-      <p class="mini-label">トレーニング目標</p>
-      <div id="set-training"></div>
-    </div>
-    <div class="form-group">
       <p class="mini-label">データ</p>
       <button class="pill-btn wide" id="btn-export-json">バックアップを書き出す (JSON)</button>
       <button class="pill-btn wide" id="btn-export-csv">Trade 記録を書き出す (CSV)</button>
@@ -136,8 +133,9 @@
     <div class="form-group">
       <p class="mini-label">通知について</p>
       <p class="note">Web アプリはローカル通知を送れないため、iOS 標準の「リマインダー」アプリで以下を一度だけ登録するのがおすすめです:<br>
-      ・朝 9:00 (曜日別の繰り返し)「今日は腕立ての日です」など<br>
-      ・毎日 20:00「今日の記録を忘れずに」</p>
+      ・朝 9:00 (曜日別の繰り返し)「今日は Upper の日」など<br>
+      ・毎日 20:00「今日の記録を忘れずに」<br>
+      トレーニングメニューの変更はコード側 (store.js の defaultSchedules) で行います。</p>
     </div>
   </div>
 </div>

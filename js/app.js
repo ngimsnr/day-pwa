@@ -20,9 +20,10 @@
     const d = Store.parseKey(key);
     return `${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAY_JA[Store.mondayWeekday(d) - 1]})`;
   };
-  const targetText = (s) => s.targetSeconds != null
-    ? `${s.targetSeconds}秒 × ${s.targetSets}セット`
-    : `${s.targetReps}回 × ${s.targetSets}セット`;
+  // 「3セット × 15回」/ 1セット物は「20分」だけ
+  const targetText = (item) => item.sets > 1
+    ? `${item.sets}セット × ${item.detail}`
+    : item.detail;
 
   /* ================= Today ================= */
 
@@ -104,12 +105,23 @@
 
   function renderFoodLists(day) {
     const entries = Object.entries(day.food)
-      .map(([id, on]) => ({ template: Store.template(id), on, id }))
+      .map(([id, qty]) => ({ template: Store.template(id), qty, id }))
       .filter((e) => e.template)
       .sort((a, b) => a.template.sortOrder - b.template.sortOrder);
 
-    const row = (e) =>
-      `<li data-id="${e.id}" class="${e.on ? '' : 'off'}" role="checkbox" aria-checked="${e.on}" aria-label="${e.template.name}"><span class="checkmark"></span>${e.template.name}</li>`;
+    const row = (e) => {
+      const unit = e.template.unit
+        ? `<span class="food-unit">${e.template.unit}</span>` : '';
+      const stepper = e.qty > 0
+        ? `<span class="qty-ctl">` +
+          `<button class="qty-btn" data-id="${e.id}" data-q="-1" aria-label="${e.template.name}を減らす">−</button>` +
+          `<span class="qty-val">×${e.qty}</span>` +
+          `<button class="qty-btn" data-id="${e.id}" data-q="1" aria-label="${e.template.name}を増やす">＋</button>` +
+          `</span>`
+        : '';
+      return `<li data-id="${e.id}" class="${e.qty > 0 ? '' : 'off'}" role="checkbox" aria-checked="${e.qty > 0}" aria-label="${e.template.name}">` +
+        `<span class="checkmark"></span><span class="food-name">${e.template.name}${unit}</span>${stepper}</li>`;
+    };
 
     const defaults = entries.filter((e) => e.template.isDefault);
     const extras = entries.filter((e) => !e.template.isDefault);
@@ -120,10 +132,17 @@
 
   function bindFoodList(sel) {
     $(sel).addEventListener('click', (ev) => {
-      const li = ev.target.closest('li[data-id]');
-      if (!li) return;
       const day = Store.ensureDay(currentDayKey);
-      day.food[li.dataset.id] = !day.food[li.dataset.id];
+      const qbtn = ev.target.closest('.qty-btn');
+      if (qbtn) {
+        // 個数の増減 (1〜9)。0 にはせず、外すのは行タップで
+        const id = qbtn.dataset.id;
+        day.food[id] = Math.min(9, Math.max(1, (day.food[id] || 1) + Number(qbtn.dataset.q)));
+      } else {
+        const li = ev.target.closest('li[data-id]');
+        if (!li) return;
+        day.food[li.dataset.id] = day.food[li.dataset.id] > 0 ? 0 : 1;
+      }
       Store.save();
       renderPFC(day);
       renderFoodLists(day);
@@ -132,28 +151,39 @@
   bindFoodList('#food-list-default');
   bindFoodList('#food-list-extra');
 
-  /* ---- Training ---- */
+  /* ---- Training (1日複数種目) ---- */
   function renderTraining(day) {
     const body = $('#training-body');
     const schedule = Store.scheduleFor(currentDayKey);
-    if (!schedule || !schedule.exercise || !day.training) {
+    if (!schedule || !schedule.items.length || !day.training) {
       body.innerHTML = '<p class="tr-rest">今日は休みの日です</p>';
       return;
     }
-    const done = day.training.completedSets;
-    const boxes = Array.from({ length: schedule.targetSets }, (_, i) =>
-      `<button class="tr-box ${i < done ? 'done' : ''}" data-i="${i}" aria-label="セット${i + 1}" aria-pressed="${i < done}"></button>`
-    ).join('');
-    body.innerHTML =
-      `<div><span class="tr-name">${Store.EXERCISES[schedule.exercise].name}</span><span class="tr-target">${targetText(schedule)}</span></div>` +
-      `<div class="tr-sets">${boxes}<span class="tr-count">${done} / ${schedule.targetSets}</span></div>`;
+    const done = day.training.done;
+    let html = '';
+    if (schedule.label) html += `<p class="tr-menu-label">${schedule.label}</p>`;
+    if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成 (フットサルは土日どちらか)</p>';
+    html += schedule.items.map((item) => {
+      const n = done[item.id] || 0;
+      const boxes = Array.from({ length: item.sets }, (_, i) =>
+        `<button class="tr-box ${i < n ? 'done' : ''}" data-item="${item.id}" data-i="${i}" aria-label="${item.name} セット${i + 1}" aria-pressed="${i < n}"></button>`
+      ).join('');
+      const target = targetText(item);
+      return `<div class="tr-item">` +
+        `<div><span class="tr-name">${item.name}</span>${target ? `<span class="tr-target">${target}</span>` : ''}</div>` +
+        `<div class="tr-sets">${boxes}<span class="tr-count">${n} / ${item.sets}</span></div>` +
+        `</div>`;
+    }).join('');
+    body.innerHTML = html;
   }
   $('#training-body').addEventListener('click', (ev) => {
     const box = ev.target.closest('.tr-box');
     if (!box) return;
     const i = Number(box.dataset.i);
+    const itemId = box.dataset.item;
     const day = Store.ensureDay(currentDayKey);
-    day.training.completedSets = i < day.training.completedSets ? i : i + 1;
+    const current = day.training.done[itemId] || 0;
+    day.training.done[itemId] = i < current ? i : i + 1;
     Store.save();
     renderTraining(day);
   });
@@ -161,7 +191,7 @@
   /* ---- 追加食材シート ---- */
   const sheetAdd = $('#sheet-addfood');
   $('#btn-addfood').addEventListener('click', () => {
-    for (const id of ['#af-name', '#af-p', '#af-f', '#af-c']) $(id).value = '';
+    for (const id of ['#af-name', '#af-unit', '#af-p', '#af-f', '#af-c']) $(id).value = '';
     $('#addfood-save').disabled = true;
     const recent = Store.recentTemplates(10);
     $('#af-recent-wrap').hidden = recent.length === 0;
@@ -179,7 +209,9 @@
       const v = parseFloat($(sel).value.replace(/[^0-9.]/g, ''));
       return Number.isFinite(v) ? v : 0;
     };
-    const t = Store.addTemplate($('#af-name').value.trim(), num('#af-p'), num('#af-f'), num('#af-c'));
+    const t = Store.addTemplate(
+      $('#af-name').value.trim(), $('#af-unit').value.trim(),
+      num('#af-p'), num('#af-f'), num('#af-c'));
     addToToday(t.id);
   });
   $('#af-recent').addEventListener('click', (ev) => {
@@ -188,7 +220,8 @@
   });
   function addToToday(templateId) {
     const day = Store.ensureDay(currentDayKey);
-    day.food[templateId] = true;
+    // すでにある食材をもう一度追加したら個数 +1
+    day.food[templateId] = Math.min(9, (day.food[templateId] || 0) + 1);
     const t = Store.template(templateId);
     if (t) t.lastUsedAt = Date.now();
     Store.save();
@@ -284,19 +317,20 @@
       `<div class="sum-row"><span class="l">Future</span><span class="v">${yen(day.trade.future)}</span></div></section>`;
 
     const items = Object.entries(day.food)
-      .map(([id, on]) => ({ t: Store.template(id), on }))
+      .map(([id, qty]) => ({ t: Store.template(id), qty }))
       .filter((e) => e.t)
       .sort((a, b) => a.t.sortOrder - b.t.sortOrder)
-      .map((e) => `<li class="${e.on ? '' : 'off'}"><span class="mark">${e.on ? '✓' : '−'}</span>${e.t.name}</li>`)
+      .map((e) => `<li class="${e.qty > 0 ? '' : 'off'}"><span class="mark">${e.qty > 0 ? '✓' : '−'}</span>${e.t.name}${e.qty > 1 ? ` ×${e.qty}` : ''}</li>`)
       .join('');
     html += `<section class="card"><h2 class="card-title">Food</h2><ul class="detail-food">${items || '<p class="empty">記録なし</p>'}</ul></section>`;
 
     const schedule = Store.scheduleFor(key);
-    html += `<section class="card"><h2 class="card-title">Training</h2>` +
-      (day.training && schedule && schedule.exercise
-        ? `<div class="sum-row"><span class="l">${Store.EXERCISES[day.training.exercise].name}</span><span class="v">${day.training.completedSets} / ${schedule.targetSets} セット</span></div>`
-        : '<p class="empty">休み / 記録なし</p>') +
-      `</section>`;
+    const trainingRows = (schedule && schedule.items.length && day.training)
+      ? schedule.items.map((item) =>
+          `<div class="sum-row"><span class="l">${item.name}</span><span class="v">${day.training.done[item.id] || 0} / ${item.sets}</span></div>`
+        ).join('')
+      : '<p class="empty">記録なし</p>';
+    html += `<section class="card"><h2 class="card-title">Training${schedule && schedule.label ? ` (${schedule.label})` : ''}</h2>${trainingRows}</section>`;
     return html;
   }
 
@@ -336,7 +370,6 @@
     $('#set-p').value = s.proteinTarget;
     $('#set-f').value = s.fatTarget;
     $('#set-c').value = s.carbTarget;
-    renderTrainingSettings();
     sheetSettings.hidden = false;
   });
   $('#settings-done').addEventListener('click', () => {
@@ -351,35 +384,6 @@
     Store.save();
     sheetSettings.hidden = true;
     render();
-  });
-
-  function renderTrainingSettings() {
-    const wrap = $('#set-training');
-    wrap.innerHTML = Object.entries(Store.EXERCISES).map(([key, ex]) => {
-      const schedule = Store.state.schedules.find((s) => s.exercise === key);
-      if (!schedule) return '';
-      const amount = ex.timed
-        ? { label: schedule.targetSeconds + '秒', field: 'targetSeconds', step: 10, min: 10 }
-        : { label: schedule.targetReps + '回', field: 'targetReps', step: 5, min: 5 };
-      const stepper = (field, label, step, min) =>
-        `<div class="stepper"><span class="val">${label}</span>` +
-        `<button data-ex="${key}" data-field="${field}" data-delta="${-step}" data-min="${min}" aria-label="${label}を減らす">−</button>` +
-        `<button data-ex="${key}" data-field="${field}" data-delta="${step}" data-min="${min}" aria-label="${label}を増やす">＋</button></div>`;
-      return `<p class="set-ex-name">${ex.name}</p>` +
-        `<div class="form-row"><label>${ex.timed ? '秒数' : '回数'}</label>${stepper(amount.field, amount.label, amount.step, amount.min)}</div>` +
-        `<div class="form-row"><label>セット数</label>${stepper('targetSets', schedule.targetSets + 'セット', 1, 1)}</div>`;
-    }).join('');
-  }
-  $('#set-training').addEventListener('click', (ev) => {
-    const btn = ev.target.closest('button[data-ex]');
-    if (!btn) return;
-    const { ex, field, delta, min } = btn.dataset;
-    // 同じ種目の全曜日に反映
-    Store.state.schedules
-      .filter((s) => s.exercise === ex)
-      .forEach((s) => { s[field] = Math.max(Number(min), (s[field] || 0) + Number(delta)); });
-    Store.save();
-    renderTrainingSettings();
   });
 
   /* ---- バックアップ ---- */
@@ -447,6 +451,11 @@
     if (!document.hidden) rolloverIfNeeded();
   });
   window.addEventListener('pageshow', rolloverIfNeeded);
+
+  // 別タブ/別ウィンドウがデータを書き換えたら読み直す (iPhone 単体では発火しない)
+  window.addEventListener('storage', (ev) => {
+    if (ev.key === 'day-app-state-v1') location.reload();
+  });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
