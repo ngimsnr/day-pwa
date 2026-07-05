@@ -43,7 +43,7 @@ const Store = (() => {
     ['鶏むね肉', '100g', 23, 2, 0],
     ['ゆで卵', '1個', 6.5, 5.2, 0.2],
     ['納豆', '40g', 6.6, 4.2, 5.8],
-    ['キムチ', '50g', 1.6, 0.2, 2.7],
+    ['キムチ', '50g', 1.6, 0.2, 6.6],
     ['豆腐', '150g', 7.2, 3.8, 6.6],
     ['もずく', '70g', 0.1, 0.1, 1.5],
     ['プロテイン', '1杯', 21.8, 1.8, 3.6],
@@ -51,7 +51,7 @@ const Store = (() => {
 
   function defaultState() {
     return {
-      version: 4,
+      version: 5,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
       templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
@@ -67,6 +67,7 @@ const Store = (() => {
     if (s.version === 1) migrateV2(s);
     if (s.version === 2) migrateV3(s);
     if (s.version === 3) migrateV4(s);
+    if (s.version === 4) migrateV5(s);
     return s;
   }
 
@@ -122,6 +123,12 @@ const Store = (() => {
   function migrateV4(s) {
     applyDefaultFoods(s);
     s.version = 4;
+  }
+
+  // v5: キムチの C を実測値に修正
+  function migrateV5(s) {
+    applyDefaultFoods(s);
+    s.version = 5;
   }
 
   let state;
@@ -305,7 +312,7 @@ const Store = (() => {
 
   function importJSON(text) {
     const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== 4 || !parsed.days || !parsed.templates) {
+    if (!parsed || parsed.version !== 5 || !parsed.days || !parsed.templates) {
       throw new Error('形式が違います');
     }
     state = parsed;
