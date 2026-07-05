@@ -162,7 +162,7 @@
     const done = day.training.done;
     let html = '';
     if (schedule.label) html += `<p class="tr-menu-label">${schedule.label}</p>`;
-    if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成 (フットサルは土日どちらか)</p>';
+    if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成</p>';
     html += schedule.items.map((item) => {
       const n = done[item.id] || 0;
       const boxes = Array.from({ length: item.sets }, (_, i) =>
