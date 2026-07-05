@@ -214,6 +214,7 @@ li:not(.off) .checkmark::after {
 .cal-profit { font-size: 9px; color: var(--text2); font-variant-numeric: tabular-nums; max-width: 100%; overflow: hidden; }
 .cal-day { font-variant-numeric: tabular-nums; }
 
+#day-detail { scroll-margin-top: 56px; }
 .detail-food li { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 4px 0; }
 .detail-food .mark { font-size: 12px; width: 16px; text-align: center; }
 .detail-food li.off { color: var(--text2); }

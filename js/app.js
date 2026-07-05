@@ -135,9 +135,10 @@
       const day = Store.ensureDay(currentDayKey);
       const qbtn = ev.target.closest('.qty-btn');
       if (qbtn) {
-        // 個数の増減 (1〜9)。0 にはせず、外すのは行タップで
+        // 個数の増減 (×1〜×9)。×1 で − を押したらチェック解除
         const id = qbtn.dataset.id;
-        day.food[id] = Math.min(9, Math.max(1, (day.food[id] || 1) + Number(qbtn.dataset.q)));
+        const next = (day.food[id] || 1) + Number(qbtn.dataset.q);
+        day.food[id] = next <= 0 ? 0 : Math.min(9, next);
       } else {
         const li = ev.target.closest('li[data-id]');
         if (!li) return;
@@ -307,7 +308,7 @@
     const day = Store.state.days[key];
     const editBtn = key <= Store.todayKey()
       ? `<button class="text-btn-sm" data-edit-day="${key}">この日を入力</button>` : '';
-    let html = `<div class="period-head"><h3>${titleFor(key)}</h3>${editBtn}</div>`;
+    let html = `<div class="period-head" id="day-detail"><h3>${titleFor(key)}</h3>${editBtn}</div>`;
     if (!day) return html + '<section class="card"><p class="empty">記録なし</p></section>';
 
     const total = day.trade.stock + day.trade.future;
@@ -352,6 +353,9 @@
     if (cell) {
       selectedCalKey = cell.dataset.key === selectedCalKey ? null : cell.dataset.key;
       renderHistory();
+      if (selectedCalKey) {
+        document.getElementById('day-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   });
 
@@ -455,6 +459,14 @@
   // 別タブ/別ウィンドウがデータを書き換えたら読み直す (iPhone 単体では発火しない)
   window.addEventListener('storage', (ev) => {
     if (ev.key === 'day-app-state-v1') location.reload();
+  });
+
+  // 入力欄の外をタップしたらキーボードを閉じる (iOS の数字キーボードには完了ボタンがないため)
+  document.addEventListener('pointerdown', (ev) => {
+    const active = document.activeElement;
+    if (active && active.tagName === 'INPUT' && !ev.target.closest('input')) {
+      active.blur();
+    }
   });
 
   if ('serviceWorker' in navigator) {
