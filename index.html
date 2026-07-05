@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day</title>
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Day">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-zone">
+    <button id="btn-today-back" class="text-btn-sm" hidden>今日へ</button>
+  </span>
+  <span class="title-nav">
+    <button id="day-prev" class="chev-day" aria-label="前の日">‹</button>
+    <h1 id="topbar-title">Day</h1>
+    <button id="day-next" class="chev-day" aria-label="次の日">›</button>
+  </span>
+  <span class="topbar-zone right">
+  <button id="btn-settings" class="icon-btn" aria-label="設定">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.08A1.7 1.7 0 0 0 10.1 3.6V3.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.08a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.28Z"/></svg>
+  </button>
+  </span>
+</header>
+
+<main id="view-today" class="view">
+  <section class="card">
+    <h2 class="card-title">Trade</h2>
+    <div class="trade-row">
+      <label for="in-stock" class="trade-label">Stock</label>
+      <button class="sign-btn" id="sign-stock" aria-label="Stockの符号を切り替え">+</button>
+      <input id="in-stock" class="trade-input" type="text" inputmode="numeric" placeholder="0" autocomplete="off">
+      <span class="unit">円</span>
+    </div>
+    <hr class="sep">
+    <div class="trade-row">
+      <label for="in-future" class="trade-label">Future</label>
+      <button class="sign-btn" id="sign-future" aria-label="Futureの符号を切り替え">+</button>
+      <input id="in-future" class="trade-input" type="text" inputmode="numeric" placeholder="0" autocomplete="off">
+      <span class="unit">円</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="card-title">Food</h2>
+    <div class="pfc-row" id="pfc-bars"></div>
+    <ul id="food-list-default" class="food-list"></ul>
+    <div id="food-extra-wrap" hidden>
+      <p class="mini-label">追加食材</p>
+      <ul id="food-list-extra" class="food-list"></ul>
+    </div>
+    <button id="btn-addfood" class="pill-btn">＋ 追加</button>
+  </section>
+
+  <section class="card">
+    <h2 class="card-title">Training</h2>
+    <div id="training-body"></div>
+  </section>
+</main>
+
+<main id="view-history" class="view" hidden>
+  <div class="segmented" id="history-seg" role="tablist">
+    <button class="seg active" data-scope="daily" role="tab">日</button>
+    <button class="seg" data-scope="weekly" role="tab">週</button>
+    <button class="seg" data-scope="monthly" role="tab">月</button>
+    <button class="seg" data-scope="yearly" role="tab">年</button>
+  </div>
+  <div id="history-body"></div>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-tab="today">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+    <span>Today</span>
+  </button>
+  <button class="tab" data-tab="history">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>History</span>
+  </button>
+</nav>
+
+<div id="sheet-addfood" class="sheet" hidden>
+  <header class="sheet-header">
+    <button class="text-btn" id="addfood-cancel">キャンセル</button>
+    <h2>食材を追加</h2>
+    <button class="text-btn strong" id="addfood-save" disabled>追加</button>
+  </header>
+  <div class="sheet-body">
+    <div class="form-group">
+      <p class="mini-label">新しい食材</p>
+      <div class="form-row"><label for="af-name">名前</label><input id="af-name" type="text" autocomplete="off"></div>
+      <div class="form-row"><label for="af-p">P (g)</label><input id="af-p" type="text" inputmode="decimal" placeholder="0"></div>
+      <div class="form-row"><label for="af-f">F (g)</label><input id="af-f" type="text" inputmode="decimal" placeholder="0"></div>
+      <div class="form-row"><label for="af-c">C (g)</label><input id="af-c" type="text" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <div class="form-group" id="af-recent-wrap" hidden>
+      <p class="mini-label">最近使った食材 (タップで今日に追加)</p>
+      <ul id="af-recent" class="recent-list"></ul>
+    </div>
+  </div>
+</div>
+
+<div id="sheet-settings" class="sheet" hidden>
+  <header class="sheet-header">
+    <span class="text-btn" aria-hidden="true"></span>
+    <h2>設定</h2>
+    <button class="text-btn strong" id="settings-done">完了</button>
+  </header>
+  <div class="sheet-body">
+    <div class="form-group">
+      <p class="mini-label">目標 PFC (g / 日)</p>
+      <div class="form-row"><label for="set-p">Protein</label><input id="set-p" type="text" inputmode="numeric"></div>
+      <div class="form-row"><label for="set-f">Fat</label><input id="set-f" type="text" inputmode="numeric"></div>
+      <div class="form-row"><label for="set-c">Carb</label><input id="set-c" type="text" inputmode="numeric"></div>
+    </div>
+    <div class="form-group">
+      <p class="mini-label">トレーニング目標</p>
+      <div id="set-training"></div>
+    </div>
+    <div class="form-group">
+      <p class="mini-label">データ</p>
+      <button class="pill-btn wide" id="btn-export-json">バックアップを書き出す (JSON)</button>
+      <button class="pill-btn wide" id="btn-export-csv">Trade 記録を書き出す (CSV)</button>
+      <button class="pill-btn wide" id="btn-import-json">バックアップを読み込む</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+    <div class="form-group">
+      <p class="mini-label">通知について</p>
+      <p class="note">Web アプリはローカル通知を送れないため、iOS 標準の「リマインダー」アプリで以下を一度だけ登録するのがおすすめです:<br>
+      ・朝 9:00 (曜日別の繰り返し)「今日は腕立ての日です」など<br>
+      ・毎日 20:00「今日の記録を忘れずに」</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
