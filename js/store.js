@@ -32,19 +32,28 @@ const Store = (() => {
     ];
   }
 
+  /* ---- 固定食材 (分量あたりの PFC)。値の変更はここを編集 ---- */
+  const DEFAULT_FOODS = [
+    // [名前, 分量, P, F, C]
+    ['ヨーグルト', '100g', 3.6, 3.0, 4.9],
+    ['キウイ', '1個', 0.9, 0.2, 11.5],
+    ['ブルーベリー', '50g', 0.3, 0.1, 6.4],
+    ['ベースブレッド', '1個', 13.5, 5.5, 24],
+    ['十割そば', '1食', 7.5, 1.2, 43],
+    ['鶏むね肉', '100g', 23, 2, 0],
+    ['ゆで卵', '1個', 6.5, 5.2, 0.2],
+    ['納豆', '40g', 6.6, 4.0, 4.8],
+    ['キムチ', '50g', 1.2, 0.2, 2.7],
+    ['豆腐', '150g', 10.5, 7.4, 2.3],
+    ['もずく', '70g', 0.2, 0.1, 3.5],
+    ['プロテイン', '1杯', 21, 1.5, 3],
+  ];
+
   function defaultState() {
-    // 初期値は汎用的なサンプル。実際の食材・目標値は各自の端末内で育つ
-    const foods = [
-      ['ごはん', '1杯', 4, 0.5, 55], ['パン', '1枚', 9, 4, 45],
-      ['十割そば', '1食', 7.5, 1.2, 43], ['鶏むね肉', '100g', 23, 2, 0],
-      ['卵', '1個', 6.5, 5.5, 0.5], ['魚', '1切', 20, 5, 0],
-      ['野菜', '1皿', 2, 0, 5], ['果物', '1個', 1, 0, 15],
-      ['乳製品', '1個', 7, 8, 10], ['大豆製品', '1パック', 8, 5, 4], ['プロテイン', '1杯', 20, 2, 3],
-    ];
     return {
-      version: 2,
+      version: 3,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
-      templates: foods.map(([name, unit, p, f, c], i) => ({
+      templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
       })),
       schedules: defaultSchedules(),
@@ -52,10 +61,15 @@ const Store = (() => {
     };
   }
 
-  /* ---- v1 → v2 移行 (既存端末のデータを保ったまま新形式へ) ---- */
+  /* ---- 既存端末データの移行 (v1 → v2 → v3)。記録は保ったまま新形式へ ---- */
   function migrate(s) {
-    if (!s || s.version === 2) return s;
+    if (!s) return s;
+    if (s.version === 1) migrateV2(s);
+    if (s.version === 2) migrateV3(s);
+    return s;
+  }
 
+  function migrateV2(s) {
     // 食材テンプレートに分量ラベルを追加
     s.templates.forEach((t) => { if (t.unit == null) t.unit = ''; });
 
@@ -87,7 +101,16 @@ const Store = (() => {
     }
 
     s.version = 2;
-    return s;
+  }
+
+  // v3: 固定食材の分量と PFC を DEFAULT_FOODS の値に揃える (名前一致で更新)
+  function migrateV3(s) {
+    const byName = new Map(DEFAULT_FOODS.map(([name, unit, p, f, c]) => [name, { unit, p, f, c }]));
+    s.templates.forEach((t) => {
+      const v = t.isDefault && byName.get(t.name);
+      if (v) { t.unit = v.unit; t.p = v.p; t.f = v.f; t.c = v.c; }
+    });
+    s.version = 3;
   }
 
   let state;
@@ -271,7 +294,7 @@ const Store = (() => {
 
   function importJSON(text) {
     const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== 2 || !parsed.days || !parsed.templates) {
+    if (!parsed || parsed.version !== 3 || !parsed.days || !parsed.templates) {
       throw new Error('形式が違います');
     }
     state = parsed;
