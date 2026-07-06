@@ -262,3 +262,10 @@ li:not(.off) .checkmark::after {
 .recent-list .pfc-mini { font-size: 12px; color: var(--text2); }
 .recent-list li:active { background: var(--press); }
 
+.extra-row { cursor: pointer; }
+.extra-row:active { background: var(--press); }
+.extra-edit { border-bottom: 0.5px solid var(--border); padding-bottom: 6px; }
+.extra-edit:last-child { border-bottom: none; }
+.extra-actions { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; }
+.extra-actions .spacer { flex: 1; }
+

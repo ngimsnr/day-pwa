@@ -241,6 +241,20 @@ const Store = (() => {
     return t;
   }
 
+  function updateTemplate(id, fields) {
+    const t = template(id);
+    if (t) { Object.assign(t, fields); save(); }
+  }
+
+  // テンプレート削除。全日付の記録からもその食材の行を取り除く
+  function deleteTemplate(id) {
+    state.templates = state.templates.filter((t) => t.id !== id);
+    for (const day of Object.values(state.days)) {
+      delete day.food[id];
+    }
+    save();
+  }
+
   function recentTemplates(limit) {
     return state.templates
       .filter((t) => !t.isDefault)
@@ -340,7 +354,7 @@ const Store = (() => {
     save,
     dateKey, parseKey, todayKey, mondayWeekday, addDays, keysIn,
     weekInterval, monthInterval, yearInterval, isoWeek,
-    ensureDay, scheduleFor, template, addTemplate, recentTemplates,
+    ensureDay, scheduleFor, template, addTemplate, updateTemplate, deleteTemplate, recentTemplates,
     pfcTotals, tradeSummary, foodRates, trainingSummary, isDayTrainingComplete,
     exportJSON, importJSON, exportCSV,
   };

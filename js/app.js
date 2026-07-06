@@ -12,6 +12,8 @@
   let selectedCalKey = null;
 
   /* ---- 書式 ---- */
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtNum = (n) => Math.abs(n).toLocaleString('ja-JP');
   const yen = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(n) + '円';
   const compact = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(n);
@@ -374,7 +376,72 @@
     $('#set-p').value = s.proteinTarget;
     $('#set-f').value = s.fatTarget;
     $('#set-c').value = s.carbTarget;
+    editingExtraId = null;
+    renderExtrasEditor();
     sheetSettings.hidden = false;
+  });
+
+  /* ---- 追加食材の編集・削除 ---- */
+  let editingExtraId = null;
+
+  function renderExtrasEditor() {
+    const extras = Store.state.templates
+      .filter((t) => !t.isDefault)
+      .sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+    $('#extras-group').hidden = extras.length === 0;
+    $('#extras-list').innerHTML = extras.map((t) => {
+      if (t.id === editingExtraId) {
+        return `<div class="extra-edit" data-id="${t.id}">` +
+          `<div class="form-row"><label>名前</label><input id="ee-name" type="text" value="${esc(t.name)}"></div>` +
+          `<div class="form-row"><label>分量</label><input id="ee-unit" type="text" value="${esc(t.unit)}" placeholder="1個 / 100g など"></div>` +
+          `<div class="form-row"><label>P (g)</label><input id="ee-p" type="text" inputmode="decimal" value="${t.p}"></div>` +
+          `<div class="form-row"><label>F (g)</label><input id="ee-f" type="text" inputmode="decimal" value="${t.f}"></div>` +
+          `<div class="form-row"><label>C (g)</label><input id="ee-c" type="text" inputmode="decimal" value="${t.c}"></div>` +
+          `<div class="extra-actions">` +
+          `<button class="text-btn-sm" data-ee="delete">削除</button>` +
+          `<span class="spacer"></span>` +
+          `<button class="text-btn-sm" data-ee="cancel">キャンセル</button>` +
+          `<button class="text-btn-sm strong" data-ee="save">保存</button>` +
+          `</div></div>`;
+      }
+      const unit = t.unit ? ` <span class="food-unit">${esc(t.unit)}</span>` : '';
+      return `<div class="form-row extra-row" data-id="${t.id}" role="button">` +
+        `<span>${esc(t.name)}${unit}</span>` +
+        `<span class="pfc-mini">P${t.p} F${t.f} C${t.c}</span></div>`;
+    }).join('');
+  }
+
+  $('#extras-list').addEventListener('click', (ev) => {
+    const action = ev.target.closest('[data-ee]');
+    if (action) {
+      const id = editingExtraId;
+      if (action.dataset.ee === 'save') {
+        const name = $('#ee-name').value.trim();
+        if (!name) return;
+        const num = (sel) => {
+          const v = parseFloat($(sel).value.replace(/[^0-9.]/g, ''));
+          return Number.isFinite(v) ? v : 0;
+        };
+        Store.updateTemplate(id, {
+          name, unit: $('#ee-unit').value.trim(),
+          p: num('#ee-p'), f: num('#ee-f'), c: num('#ee-c'),
+        });
+        editingExtraId = null;
+      } else if (action.dataset.ee === 'delete') {
+        if (!confirm('この食材を削除します。過去の記録からも消えます。よろしいですか?')) return;
+        Store.deleteTemplate(id);
+        editingExtraId = null;
+      } else {
+        editingExtraId = null;
+      }
+      renderExtrasEditor();
+      return;
+    }
+    const row = ev.target.closest('.extra-row[data-id]');
+    if (row) {
+      editingExtraId = row.dataset.id;
+      renderExtrasEditor();
+    }
   });
   $('#settings-done').addEventListener('click', () => {
     const num = (sel, fallback) => {
