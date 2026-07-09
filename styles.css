@@ -45,6 +45,10 @@ ul { padding: 0; list-style: none; }
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
 .topbar h1 { font-size: 17px; font-weight: 600; }
+.day-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text); vertical-align: middle; margin-left: 7px; margin-top: -2px;
+}
 .topbar-zone { flex: 1; display: flex; }
 .topbar-zone.right { justify-content: flex-end; }
 .title-nav { display: flex; align-items: center; gap: 2px; }
@@ -204,10 +208,12 @@ li:not(.off) .checkmark::after {
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .cal-wd { text-align: center; font-size: 11px; color: var(--text2); padding: 4px 0; }
 .cal-cell {
-  min-height: 46px; border-radius: 8px; padding: 3px 1px;
+  min-height: 48px; border-radius: 8px; padding: 3px 1px 4px;
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   font-size: 12px;
 }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; background: transparent; margin-top: 1px; }
+.cal-dot.on { background: var(--text); }
 .cal-cell:active { background: var(--press); }
 .cal-cell.today { border: 1px solid var(--text); }
 .cal-cell.selected { background: var(--press); }

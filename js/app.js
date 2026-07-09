@@ -45,7 +45,11 @@
     $('#day-next').hidden = !onToday;
     $('#day-next').disabled = currentDayKey >= Store.todayKey();
     $('#btn-today-back').hidden = !onToday || currentDayKey === Store.todayKey();
-    $('#topbar-title').textContent = onToday ? titleFor(currentDayKey) : 'History';
+    // 達成した日は日付の横に点が灯る
+    $('#topbar-title').innerHTML = onToday
+      ? esc(titleFor(currentDayKey)) +
+        (Store.isDayComplete(currentDayKey) ? '<span class="day-dot" role="img" aria-label="達成"></span>' : '')
+      : 'History';
   }
   function goToDay(key) {
     currentDayKey = key;
@@ -149,6 +153,7 @@
       Store.save();
       renderPFC(day);
       renderFoodLists(day);
+      updateTopbar();
     });
   }
   bindFoodList('#food-list-default');
@@ -189,6 +194,7 @@
     day.training.done[itemId] = i < current ? i : i + 1;
     Store.save();
     renderTraining(day);
+    updateTopbar();
   });
 
   /* ---- 追加食材シート ---- */
@@ -299,7 +305,8 @@
       const cls = ['cal-cell', key === todayK ? 'today' : '', key === selectedCalKey ? 'selected' : ''].join(' ');
       cells += `<button class="${cls}" data-key="${key}">` +
         `<span class="cal-day">${Store.parseKey(key).getDate()}</span>` +
-        `<span class="cal-profit">${day && total !== 0 ? compact(total) : ''}</span></button>`;
+        `<span class="cal-profit">${day && total !== 0 ? compact(total) : ''}</span>` +
+        `<span class="cal-dot${Store.isDayComplete(key) ? ' on' : ''}"></span></button>`;
     }
     return periodHead(monthTitle(offsets.daily)) +
       `<section class="card"><div class="cal-grid">${cells}</div></section>` +

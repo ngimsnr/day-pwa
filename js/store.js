@@ -311,6 +311,15 @@ const Store = (() => {
     return schedule.anyOne ? schedule.items.some(ok) : schedule.items.every(ok);
   }
 
+  // その日の「達成」= Training 達成 かつ Food を1つ以上チェック。
+  // Trade は含めない (ノートレードの日が未達成になるのは違うため)。
+  function isDayComplete(key) {
+    const day = state.days[key];
+    if (!day) return false;
+    const foodRecorded = Object.values(day.food).some((q) => q > 0);
+    return foodRecorded && isDayTrainingComplete(day, scheduleFor(key));
+  }
+
   // 達成日数 / 予定日数。未来日は分母に入れない。
   function trainingSummary(keys) {
     const today = todayKey();
@@ -355,7 +364,7 @@ const Store = (() => {
     dateKey, parseKey, todayKey, mondayWeekday, addDays, keysIn,
     weekInterval, monthInterval, yearInterval, isoWeek,
     ensureDay, scheduleFor, template, addTemplate, updateTemplate, deleteTemplate, recentTemplates,
-    pfcTotals, tradeSummary, foodRates, trainingSummary, isDayTrainingComplete,
+    pfcTotals, tradeSummary, foodRates, trainingSummary, isDayTrainingComplete, isDayComplete,
     exportJSON, importJSON, exportCSV,
   };
 })();
