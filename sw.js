@@ -2,7 +2,7 @@
 
 /* オフライン対応: アプリ本体を全てキャッシュし、以降はキャッシュ優先 + 裏で更新
    (stale-while-revalidate)。デプロイ時は VERSION を上げる。 */
-const VERSION = 'day-v13';
+const VERSION = 'day-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,10 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(VERSION).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(VERSION)
+      // HTTP キャッシュを迂回して必ずサーバーから最新を取る
+      .then((cache) => Promise.all(ASSETS.map((url) => cache.add(new Request(url, { cache: 'reload' })))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -33,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-      const fresh = fetch(event.request).then((res) => {
+      const fresh = fetch(event.request, { cache: 'no-cache' }).then((res) => {
         if (res.ok) {
           const clone = res.clone();
           caches.open(VERSION).then((cache) => cache.put(event.request, clone));

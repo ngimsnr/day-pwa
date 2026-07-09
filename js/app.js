@@ -545,6 +545,19 @@
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
+    // 新バージョンが有効になったら一度だけ再読み込みして即反映
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController) location.reload();
+      hadController = true;
+    });
+    // アプリに戻ってきたタイミングで更新を確認
+    // (iOS はホームに戻ってもページが生き続けるため、これがないと更新に気づけない)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        navigator.serviceWorker.getRegistration().then((r) => { if (r) r.update(); });
+      }
+    });
   }
 
   render();
