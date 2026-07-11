@@ -217,7 +217,11 @@ li:not(.off) .checkmark::after {
 .cal-cell:active { background: var(--press); }
 .cal-cell.today { border: 1px solid var(--text); }
 .cal-cell.selected { background: var(--press); }
-.cal-profit { font-size: 9px; color: var(--text2); font-variant-numeric: tabular-nums; max-width: 100%; overflow: hidden; }
+.cal-profit {
+  font-size: 9px; line-height: 11px; min-height: 11px;
+  color: var(--text2); font-variant-numeric: tabular-nums;
+  max-width: 100%; overflow: hidden;
+}
 .cal-day { font-variant-numeric: tabular-nums; }
 
 #day-detail { scroll-margin-top: 56px; }
