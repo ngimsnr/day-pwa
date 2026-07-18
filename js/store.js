@@ -37,21 +37,18 @@ const Store = (() => {
     // [名前, 分量, P, F, C]
     ['ヨーグルト', '100g', 3.6, 3.0, 4.9],
     ['キウイ', '1個', 0.9, 0.2, 11.5],
-    ['ブルーベリー', '50g', 0.3, 0.1, 6.4],
-    ['ベースブレッド', '1個', 13.5, 8.5, 32],
-    ['十割そば', '1食', 7.5, 1.2, 43],
-    ['鶏むね肉', '100g', 23, 2, 0],
     ['ゆで卵', '1個', 6.5, 5.2, 0.2],
-    ['納豆', '40g', 6.6, 4.2, 5.8],
+    ['ブロッコリー', '100g', 4.3, 0.5, 5.2],
+    ['鶏むね肉', '100g', 23, 2, 0],
+    ['さつまいも', '100g', 1.2, 0.2, 32],
+    ['納豆', '1個', 6.6, 4.2, 5.8],
     ['キムチ', '50g', 1.6, 0.2, 6.6],
-    ['豆腐', '150g', 7.2, 3.8, 4.1],
-    ['もずく', '70g', 0.1, 0.1, 1.5],
     ['プロテイン', '1杯', 21.8, 1.8, 3.6],
   ];
 
   function defaultState() {
     return {
-      version: 6,
+      version: 7,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
       templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
@@ -69,6 +66,7 @@ const Store = (() => {
     if (s.version === 3) migrateV4(s);
     if (s.version === 4) migrateV5(s);
     if (s.version === 5) migrateV6(s);
+    if (s.version === 6) migrateV7(s);
     return s;
   }
 
@@ -136,6 +134,38 @@ const Store = (() => {
   function migrateV6(s) {
     applyDefaultFoods(s);
     s.version = 6;
+  }
+
+  // v7: 固定食材を9品に再編 (2026-07-11)。
+  // リスト外の旧固定食材は削除せず「追加食材」に降格し、過去の記録は保持する。
+  function migrateV7(s) {
+    const names = new Set(DEFAULT_FOODS.map((f) => f[0]));
+    DEFAULT_FOODS.forEach(([name, unit, p, f, c], i) => {
+      const existing = s.templates.find((t) => t.name === name);
+      if (existing) {
+        Object.assign(existing, { unit, p, f, c, isDefault: true, sortOrder: i });
+      } else {
+        s.templates.push({
+          id: 'v7-' + (i + 1), name, unit, p, f, c,
+          isDefault: true, sortOrder: i, lastUsedAt: 0,
+        });
+      }
+    });
+    s.templates.forEach((t) => {
+      if (t.isDefault && !names.has(t.name)) {
+        t.isDefault = false;
+        t.sortOrder = 1000 + t.sortOrder;
+      }
+    });
+    // 降格した食材の「未チェックのまま」の行は各日から掃除 (チェック済みの記録は残す)
+    const byId = new Map(s.templates.map((t) => [t.id, t]));
+    for (const day of Object.values(s.days)) {
+      for (const [id, qty] of Object.entries(day.food)) {
+        const t = byId.get(id);
+        if (qty === 0 && t && !t.isDefault) delete day.food[id];
+      }
+    }
+    s.version = 7;
   }
 
   let state;
@@ -342,7 +372,7 @@ const Store = (() => {
 
   function importJSON(text) {
     const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== 6 || !parsed.days || !parsed.templates) {
+    if (!parsed || parsed.version !== 7 || !parsed.days || !parsed.templates) {
       throw new Error('形式が違います');
     }
     state = parsed;
