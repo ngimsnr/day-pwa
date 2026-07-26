@@ -199,18 +199,26 @@
 
   /* ---- 追加食材シート ---- */
   const sheetAdd = $('#sheet-addfood');
+  // 登録済み食材の一覧。名前欄の入力でそのまま絞り込む (専用の検索窓は持たない)
+  function renderRecentList() {
+    const all = Store.recentTemplates();
+    const query = $('#af-name').value.trim();
+    const shown = query ? all.filter((t) => t.name.includes(query)) : all;
+    $('#af-recent-wrap').hidden = all.length === 0;
+    $('#af-recent').innerHTML = shown.map((t) => {
+      const unit = t.unit ? ` <span class="food-unit">${esc(t.unit)}</span>` : '';
+      return `<li data-id="${t.id}">${esc(t.name)}${unit}<span class="pfc-mini">P${t.p} F${t.f} C${t.c}</span></li>`;
+    }).join('');
+  }
   $('#btn-addfood').addEventListener('click', () => {
     for (const id of ['#af-name', '#af-unit', '#af-p', '#af-f', '#af-c']) $(id).value = '';
     $('#addfood-save').disabled = true;
-    const recent = Store.recentTemplates(10);
-    $('#af-recent-wrap').hidden = recent.length === 0;
-    $('#af-recent').innerHTML = recent.map((t) =>
-      `<li data-id="${t.id}">${t.name}<span class="pfc-mini">P${t.p} F${t.f} C${t.c}</span></li>`
-    ).join('');
+    renderRecentList();
     sheetAdd.hidden = false;
   });
   $('#af-name').addEventListener('input', () => {
     $('#addfood-save').disabled = $('#af-name').value.trim() === '';
+    renderRecentList();
   });
   $('#addfood-cancel').addEventListener('click', () => { sheetAdd.hidden = true; });
   $('#addfood-save').addEventListener('click', () => {

@@ -285,11 +285,12 @@ const Store = (() => {
     save();
   }
 
+  // 追加食材の一覧 (最近使った順)。limit 省略で全件
   function recentTemplates(limit) {
-    return state.templates
+    const list = state.templates
       .filter((t) => !t.isDefault)
-      .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
-      .slice(0, limit);
+      .sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+    return limit ? list.slice(0, limit) : list;
   }
 
   /* ---- 集計 ---- */
