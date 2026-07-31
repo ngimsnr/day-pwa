@@ -35,20 +35,17 @@ const Store = (() => {
   /* ---- 固定食材 (分量あたりの PFC)。値の変更はここを編集 ---- */
   const DEFAULT_FOODS = [
     // [名前, 分量, P, F, C]
-    ['ヨーグルト', '100g', 3.6, 3.0, 4.9],
     ['キウイ', '1個', 0.9, 0.2, 11.5],
     ['ゆで卵', '1個', 6.5, 5.2, 0.2],
-    ['ブロッコリー', '100g', 4.3, 0.5, 5.2],
     ['鶏むね肉', '100g', 23, 2, 0],
     ['さつまいも', '100g', 1.2, 0.2, 32],
     ['納豆', '1個', 6.6, 4.2, 5.8],
-    ['キムチ', '50g', 1.6, 0.2, 6.6],
     ['プロテイン', '1杯', 21.8, 1.8, 3.6],
   ];
 
   function defaultState() {
     return {
-      version: 7,
+      version: 8,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
       templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
@@ -67,6 +64,7 @@ const Store = (() => {
     if (s.version === 4) migrateV5(s);
     if (s.version === 5) migrateV6(s);
     if (s.version === 6) migrateV7(s);
+    if (s.version === 7) migrateV8(s);
     return s;
   }
 
@@ -136,9 +134,9 @@ const Store = (() => {
     s.version = 6;
   }
 
-  // v7: 固定食材を9品に再編 (2026-07-11)。
-  // リスト外の旧固定食材は削除せず「追加食材」に降格し、過去の記録は保持する。
-  function migrateV7(s) {
+  // 固定食材リストの再編を適用する。
+  // リスト外になった旧固定食材は削除せず「追加食材」に降格し、過去の記録は保持する。
+  function reorganizeDefaultFoods(s, idPrefix) {
     const names = new Set(DEFAULT_FOODS.map((f) => f[0]));
     DEFAULT_FOODS.forEach(([name, unit, p, f, c], i) => {
       const existing = s.templates.find((t) => t.name === name);
@@ -146,7 +144,7 @@ const Store = (() => {
         Object.assign(existing, { unit, p, f, c, isDefault: true, sortOrder: i });
       } else {
         s.templates.push({
-          id: 'v7-' + (i + 1), name, unit, p, f, c,
+          id: idPrefix + (i + 1), name, unit, p, f, c,
           isDefault: true, sortOrder: i, lastUsedAt: 0,
         });
       }
@@ -165,7 +163,18 @@ const Store = (() => {
         if (qty === 0 && t && !t.isDefault) delete day.food[id];
       }
     }
+  }
+
+  // v7: 固定食材を9品に再編 (2026-07-11)。
+  function migrateV7(s) {
+    reorganizeDefaultFoods(s, 'v7-');
     s.version = 7;
+  }
+
+  // v8: ヨーグルト・ブロッコリー・キムチを追加食材に降格し、固定食材を6品に (2026-07-31)。
+  function migrateV8(s) {
+    reorganizeDefaultFoods(s, 'v8-');
+    s.version = 8;
   }
 
   let state;
