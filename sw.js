@@ -2,7 +2,7 @@
 
 /* オフライン対応: アプリ本体を全てキャッシュし、以降はキャッシュ優先 + 裏で更新
    (stale-while-revalidate)。デプロイ時は VERSION を上げる。 */
-const VERSION = 'day-v21';
+const VERSION = 'day-v22';
 const ASSETS = [
   './',
   './index.html',

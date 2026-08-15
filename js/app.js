@@ -78,12 +78,9 @@
   function renderTradeMode(day) {
     const { total, rule } = Store.tradeMode(day);
     const strip = $('#trade-mode');
-    const symbol = rule ? (rule.level === 'stop' ? '■' : '▲') : '●';
-    const label = rule ? rule.label : '通常';
     strip.className = 'trade-mode ' + (rule ? rule.level : 'normal');
     strip.innerHTML =
-      `<span class="tm-symbol">${symbol}</span>` +
-      `<span class="tm-label">${esc(label)}</span>` +
+      `<span class="tm-label">${esc(rule ? rule.label : '通常')}</span>` +
       `<span class="tm-total">${yen(total)}</span>`;
 
     // ルール一覧 (閾値順の固定3行)。発動中の行のみ強調
@@ -91,7 +88,7 @@
       const r = Store.TRADE_RULES.find((x) => x.id === id);
       const active = rule && rule.id === id;
       return `<div class="rule-row${active ? ' active' : ''}">` +
-        `<span class="l">${active ? '● ' : ''}${esc(r.cond)}</span>` +
+        `<span class="l">${esc(r.cond)}</span>` +
         `<span class="v">${esc(r.label)}</span></div>`;
     }).join('');
   }
