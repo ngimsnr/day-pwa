@@ -76,7 +76,7 @@ ul { padding: 0; list-style: none; }
 .note { font-size: 13px; color: var(--text2); line-height: 1.7; }
 
 /* ---- trade ---- */
-/* ---- 損益連動モード帯 (モノクロ3段階: 枠 → 強調枠 → 白黒反転) ---- */
+/* ---- 損益連動モード帯 (モノクロ2段階: 枠 → 白黒反転) ---- */
 .trade-mode {
   display: flex; align-items: center; gap: 8px;
   border-radius: 16px; padding: 12px 16px; margin-bottom: 14px;
@@ -85,14 +85,12 @@ ul { padding: 0; list-style: none; }
 .trade-mode.normal { padding: 2px 16px 8px; font-size: 12px; color: var(--text2); }
 .trade-mode.normal .tm-symbol { font-size: 8px; }
 .trade-mode.caution { background: var(--card); border: 1px solid var(--text2); font-weight: 600; }
-.trade-mode.strong { background: var(--card); border: 2px solid var(--text); font-weight: 700; }
 .trade-mode.stop { background: var(--text); color: var(--bg); font-weight: 700; font-size: 17px; }
 .tm-total { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 400; }
 .trade-mode.stop .tm-total { font-weight: 600; }
 
-/* ---- ルール一覧 (文言・並び順固定。発動中のみ強調) ---- */
-.trade-rules { padding-top: 2px; }
-.trade-rules .mini-label { margin: 8px 0 2px; }
+/* ---- ルール一覧 (閾値順の固定3行。発動中のみ強調) ---- */
+.trade-rules { padding-top: 6px; }
 .rule-row {
   display: flex; justify-content: space-between;
   font-size: 12px; color: var(--text2); padding: 2px 0;

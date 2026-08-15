@@ -34,13 +34,11 @@ const Store = (() => {
 
   /* ---- トレードルール (閾値の変更はここを編集) ----
      上にあるほど強い制限。複数成立時は最初に成立したものを表示する。
-     level: stop = 白黒反転の帯 / strong = 強調枠 / caution = 通常枠 */
+     level: stop = 白黒反転の帯 / caution = 枠付きの帯 */
   const TRADE_RULES = [
-    { id: 'full-stop',    level: 'stop',    label: '完全終了',         cond: '+20万', test: (t) => t >= 200000 },
-    { id: 'day-stop',     level: 'stop',    label: '本日終了',         cond: '−7万',  test: (t) => t <= -70000 },
-    { id: 'stop-suggest', level: 'strong',  label: '本日は終了を推奨', cond: '+15万', test: (t) => t >= 150000 },
-    { id: 'protect',      level: 'caution', label: '利益防衛モード',   cond: '+10万', test: (t) => t >= 100000 },
-    { id: 'half-lot',     level: 'caution', label: 'ロット50%に変更',  cond: '−5万',  test: (t) => t <= -50000 },
+    { id: 'loss-stop',   level: 'stop',    label: '本日終了',       cond: '−5万',  test: (t) => t <= -50000 },
+    { id: 'profit-stop', level: 'stop',    label: '本日終了',       cond: '+10万', test: (t) => t >= 100000 },
+    { id: 'protect',     level: 'caution', label: '利益防衛モード', cond: '+5万',  test: (t) => t >= 50000 },
   ];
 
   // その日の損益からモードを判定する。該当なし (通常モード) は rule: null。
