@@ -36,9 +36,9 @@ const Store = (() => {
      上にあるほど強い制限。複数成立時は最初に成立したものを表示する。
      level: stop = 白黒反転の帯 / caution = 枠付きの帯 */
   const TRADE_RULES = [
-    { id: 'loss-stop',   level: 'stop',    label: '本日終了',       cond: '−5万',  test: (t) => t <= -50000 },
-    { id: 'profit-stop', level: 'stop',    label: '本日終了',       cond: '+10万', test: (t) => t >= 100000 },
-    { id: 'protect',     level: 'caution', label: '利益防衛モード', cond: '+5万',  test: (t) => t >= 50000 },
+    { id: 'loss-stop',   level: 'stop',    label: '本日終了', cond: '−5万',  test: (t) => t <= -50000 },
+    { id: 'profit-stop', level: 'stop',    label: '勝ち逃げ', cond: '+10万', test: (t) => t >= 100000 },
+    { id: 'protect',     level: 'caution', label: '利益防衛', cond: '+5万',  test: (t) => t >= 50000 },
   ];
 
   // その日の損益からモードを判定する。該当なし (通常モード) は rule: null。

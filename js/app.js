@@ -79,7 +79,7 @@
     const { total, rule } = Store.tradeMode(day);
     const strip = $('#trade-mode');
     const symbol = rule ? (rule.level === 'stop' ? '■' : '▲') : '●';
-    const label = rule ? rule.label : '通常モード';
+    const label = rule ? rule.label : '通常';
     strip.className = 'trade-mode ' + (rule ? rule.level : 'normal');
     strip.innerHTML =
       `<span class="tm-symbol">${symbol}</span>` +
