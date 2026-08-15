@@ -32,20 +32,44 @@ const Store = (() => {
     ];
   }
 
+  const DATA_VERSION = 9;
+
   /* ---- トレードルール (閾値の変更はここを編集) ----
      上にあるほど強い制限。複数成立時は最初に成立したものを表示する。
-     level: stop = 白黒反転の帯 / caution = 枠付きの帯 */
+     level: stop = 白黒反転の帯 / caution = 枠付きの帯。
+     判定はラチェット式: 損失ルールは当日安値 (lo)、利益ルールは当日高値 (hi) に
+     対して行う。高値/安値は片方向にしか動かないため、いちど発動したモードは
+     その日のうちは戻らない (取り返しても・返上しても帯は変わらない) */
   const TRADE_RULES = [
-    { id: 'loss-stop',   level: 'stop',    label: '本日終了', cond: '−5万',  test: (t) => t <= -50000 },
-    { id: 'profit-stop', level: 'stop',    label: '勝ち逃げ', cond: '+10万', test: (t) => t >= 100000 },
-    { id: 'protect',     level: 'caution', label: '利益防衛', cond: '+5万',  test: (t) => t >= 50000 },
+    { id: 'loss-stop',   level: 'stop',    label: '本日終了', cond: '−5万',  test: (m) => m.lo <= -50000 },
+    { id: 'profit-stop', level: 'stop',    label: '勝ち逃げ', cond: '+10万', test: (m) => m.hi >= 100000 },
+    { id: 'protect',     level: 'caution', label: '利益防衛', cond: '+5万',  test: (m) => m.hi >= 50000 },
   ];
 
   // その日の損益からモードを判定する。該当なし (通常モード) は rule: null。
-  // モードは保存せず毎回導出する: 記録変更時の再判定と日付リセットが自動で成立する
+  // モードは保存せず毎回導出する: 記録変更時の再判定と日付リセットが自動で成立する。
+  // 未確定の現在値も高値/安値に織り込んで判定する (保存前でも帯は即反応する)
   function tradeMode(day) {
     const total = day.trade.stock + day.trade.future;
-    return { total, rule: TRADE_RULES.find((r) => r.test(total)) || null };
+    const m = {
+      hi: Math.max(day.trade.hi != null ? day.trade.hi : total, total),
+      lo: Math.min(day.trade.lo != null ? day.trade.lo : total, total),
+    };
+    return { total, rule: TRADE_RULES.find((r) => r.test(m)) || null };
+  }
+
+  // 当日の高値/安値ウォーターマークに現在の合計を確定反映する。
+  // 入力のたびには呼ばない (打ち間違いの途中経過を焼き付けないため)。
+  // 呼び出しは UI 側の安定タイミング: 入力が数秒止まったとき・画面を離れるとき・描画時
+  function commitTradeWatermark(day) {
+    const total = day.trade.stock + day.trade.future;
+    const hi = Math.max(day.trade.hi != null ? day.trade.hi : 0, total);
+    const lo = Math.min(day.trade.lo != null ? day.trade.lo : 0, total);
+    if (day.trade.hi !== hi || day.trade.lo !== lo) {
+      day.trade.hi = hi;
+      day.trade.lo = lo;
+      save();
+    }
   }
 
   /* ---- 固定食材 (分量あたりの PFC)。値の変更はここを編集 ---- */
@@ -61,7 +85,7 @@ const Store = (() => {
 
   function defaultState() {
     return {
-      version: 8,
+      version: DATA_VERSION,
       settings: { proteinTarget: 100, fatTarget: 60, carbTarget: 250 },
       templates: DEFAULT_FOODS.map(([name, unit, p, f, c], i) => ({
         id: 'd' + (i + 1), name, unit, p, f, c, isDefault: true, sortOrder: i, lastUsedAt: 0,
@@ -81,6 +105,7 @@ const Store = (() => {
     if (s.version === 5) migrateV6(s);
     if (s.version === 6) migrateV7(s);
     if (s.version === 7) migrateV8(s);
+    if (s.version === 8) migrateV9(s);
     return s;
   }
 
@@ -193,6 +218,17 @@ const Store = (() => {
     s.version = 8;
   }
 
+  // v9: トレードの当日高値/安値ウォーターマークを追加 (2026-08-16)。
+  // 過去日は途中経過が残っていないため、最終値 (と日初の 0) で初期化する
+  function migrateV9(s) {
+    for (const day of Object.values(s.days)) {
+      const total = day.trade.stock + day.trade.future;
+      day.trade.hi = Math.max(0, total);
+      day.trade.lo = Math.min(0, total);
+    }
+    s.version = 9;
+  }
+
   let state;
   try {
     state = migrate(JSON.parse(localStorage.getItem(KEY))) || defaultState();
@@ -261,7 +297,7 @@ const Store = (() => {
       const food = {};
       state.templates.filter((t) => t.isDefault).forEach((t) => { food[t.id] = 0; });
       day = state.days[key] = {
-        trade: { stock: 0, future: 0 },
+        trade: { stock: 0, future: 0, hi: 0, lo: 0 },
         food,
         training: { done: {} },
       };
@@ -369,6 +405,8 @@ const Store = (() => {
       avgLoss: s.losses ? Math.round(s.lossSum / s.losses) : null,
       maxLoss: s.losses ? s.maxLoss : null,
       avgDay: traded ? Math.round((s.winSum + s.lossSum) / traded) : null,
+      // 総利益 ÷ 総損失。負け日ゼロは割れないので null (UI では —)
+      pf: s.lossSum < 0 ? s.winSum / -s.lossSum : null,
       profitStops: s.profitStops,
       lossStops: s.lossStops,
     };
@@ -430,7 +468,7 @@ const Store = (() => {
 
   function importJSON(text) {
     const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== 7 || !parsed.days || !parsed.templates) {
+    if (!parsed || parsed.version !== DATA_VERSION || !parsed.days || !parsed.templates) {
       throw new Error('形式が違います');
     }
     state = parsed;
@@ -452,7 +490,7 @@ const Store = (() => {
     dateKey, parseKey, todayKey, mondayWeekday, addDays, keysIn,
     weekInterval, monthInterval, yearInterval, isoWeek,
     ensureDay, scheduleFor, template, addTemplate, updateTemplate, deleteTemplate, recentTemplates,
-    tradeMode, TRADE_RULES,
+    tradeMode, TRADE_RULES, commitTradeWatermark,
     pfcTotals, tradeSummary, tradeStats, foodRates, trainingSummary, isDayTrainingComplete, isDayComplete,
     exportJSON, importJSON, exportCSV,
   };

@@ -65,6 +65,8 @@
 
   /* ---- Trade ---- */
   function renderTradeInputs(day) {
+    // 描画時点の保存値は打ち終わった値とみなし、高値/安値に確定反映する
+    Store.commitTradeWatermark(day);
     for (const field of ['stock', 'future']) {
       const value = day.trade[field];
       const input = $('#in-' + field);
@@ -73,6 +75,21 @@
     }
     renderTradeMode(day);
   }
+
+  // 高値/安値の確定は入力が止まってから行う。キー入力ごとに確定すると
+  // 桁の打ち間違い (−5,000 のつもりが −50,000 等) がその日のモードとして
+  // 焼き付いてしまうため。帯の表示自体は tradeMode が現在値も織り込むので即応する
+  let watermarkTimer = null;
+  function scheduleWatermarkCommit(dayKey) {
+    clearTimeout(watermarkTimer);
+    watermarkTimer = setTimeout(() => Store.commitTradeWatermark(Store.ensureDay(dayKey)), 3000);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      clearTimeout(watermarkTimer);
+      Store.commitTradeWatermark(Store.ensureDay(currentDayKey));
+    }
+  });
 
   // 損益連動のモード帯とルール一覧。判定は Store.tradeMode (保存しない・毎回導出)
   function renderTradeMode(day) {
@@ -108,6 +125,7 @@
       Store.save();
       input.value = digits ? fmtNum(magnitude) : '';
       renderTradeMode(day); // 記録した瞬間にモードを再判定
+      scheduleWatermarkCommit(currentDayKey); // 高値/安値は入力が止まってから確定
     };
     input.addEventListener('input', apply);
     signBtn.addEventListener('click', () => {
@@ -318,6 +336,7 @@
         sumRow('Wins', days(stats.wins)) + sumRow('Losses', days(stats.losses)) +
         sumRow('Avg win', yenOr(stats.avgWin)) + sumRow('Avg loss', yenOr(stats.avgLoss)) +
         sumRow('Max loss', yenOr(stats.maxLoss)) + sumRow('Daily avg', yenOr(stats.avgDay)) +
+        sumRow('Profit factor', stats.pf === null ? '—' : stats.pf.toFixed(2)) +
         '<hr class="sep">' +
         sumRow(ruleLabel('profit-stop'), days(stats.profitStops)) +
         sumRow(ruleLabel('loss-stop'), days(stats.lossStops)) +
