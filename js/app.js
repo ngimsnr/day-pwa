@@ -305,17 +305,22 @@
     const training = Store.trainingSummary(keys);
     const sumRow = (label, value, total) =>
       `<div class="sum-row ${total ? 'total' : ''}"><span class="l">${label}</span><span class="v">${value}</span></div>`;
-    const yenOr = (v) => (v === null ? '—' : yen(v)); // 該当日なしは —
+    // History のトレード統計は英語表記 (Today の帯・ルール名は母語即読を優先して日本語のまま)
+    const yenEn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + '¥' + fmtNum(v);
+    const yenOr = (v) => (v === null ? '—' : yenEn(v)); // 該当日なしは —
+    const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+    const ruleLabel = (id) => Store.TRADE_RULES.find((r) => r.id === id).label;
     return periodHead(title) +
       `<section class="card"><h2 class="card-title">Trade</h2>` +
-        sumRow('Total', yen(trade.total), true) + '<hr class="sep">' +
-        sumRow('Stock', yen(trade.stock)) + sumRow('Future', yen(trade.future)) +
+        sumRow('Total', yenEn(trade.total), true) + '<hr class="sep">' +
+        sumRow('Stock', yenEn(trade.stock)) + sumRow('Future', yenEn(trade.future)) +
         '<hr class="sep">' +
-        sumRow('勝ち', `${stats.wins}日`) + sumRow('負け', `${stats.losses}日`) +
-        sumRow('勝ち日平均', yenOr(stats.avgWin)) + sumRow('負け日平均', yenOr(stats.avgLoss)) +
-        sumRow('最大損失', yenOr(stats.maxLoss)) + sumRow('1日平均', yenOr(stats.avgDay)) +
+        sumRow('Wins', days(stats.wins)) + sumRow('Losses', days(stats.losses)) +
+        sumRow('Avg win', yenOr(stats.avgWin)) + sumRow('Avg loss', yenOr(stats.avgLoss)) +
+        sumRow('Max loss', yenOr(stats.maxLoss)) + sumRow('Daily avg', yenOr(stats.avgDay)) +
         '<hr class="sep">' +
-        sumRow('勝ち逃げ', `${stats.profitStops}日`) + sumRow('本日終了', `${stats.lossStops}日`) +
+        sumRow(ruleLabel('profit-stop'), days(stats.profitStops)) +
+        sumRow(ruleLabel('loss-stop'), days(stats.lossStops)) +
       `</section>` +
       `<section class="card"><h2 class="card-title">Food</h2>` +
         (rates
