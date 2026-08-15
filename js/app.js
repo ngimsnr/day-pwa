@@ -71,6 +71,36 @@
       input.value = value === 0 ? '' : fmtNum(value);
       setSign($('#sign-' + field), value < 0);
     }
+    renderTradeMode(day);
+  }
+
+  // 損益連動のモード帯とルール一覧。判定は Store.tradeMode (保存しない・毎回導出)
+  function renderTradeMode(day) {
+    const { total, rule } = Store.tradeMode(day);
+    const strip = $('#trade-mode');
+    const symbol = rule ? (rule.level === 'stop' ? '■' : '▲') : '●';
+    const label = rule ? rule.label : '通常モード';
+    strip.className = 'trade-mode ' + (rule ? rule.level : 'normal');
+    strip.innerHTML =
+      `<span class="tm-symbol">${symbol}</span>` +
+      `<span class="tm-label">${esc(label)}</span>` +
+      `<span class="tm-total">${yen(total)}</span>`;
+
+    // ルール一覧 (文言・並び順は固定)。発動中の行のみ強調
+    const groups = [
+      ['損失ルール', ['half-lot', 'day-stop']],
+      ['利益ルール', ['protect', 'stop-suggest', 'full-stop']],
+    ];
+    $('#trade-rules').innerHTML = groups.map(([title, ids]) =>
+      `<p class="mini-label">${title}</p>` +
+      ids.map((id) => {
+        const r = Store.TRADE_RULES.find((x) => x.id === id);
+        const active = rule && rule.id === id;
+        return `<div class="rule-row${active ? ' active' : ''}">` +
+          `<span class="l">${active ? '● ' : ''}${esc(r.cond)}</span>` +
+          `<span class="v">${esc(r.label)}</span></div>`;
+      }).join('')
+    ).join('');
   }
   function setSign(btn, minus) {
     btn.textContent = minus ? '−' : '+';
@@ -87,6 +117,7 @@
       day.trade[field] = minus ? -magnitude : magnitude;
       Store.save();
       input.value = digits ? fmtNum(magnitude) : '';
+      renderTradeMode(day); // 記録した瞬間にモードを再判定
     };
     input.addEventListener('input', apply);
     signBtn.addEventListener('click', () => {
