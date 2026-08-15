@@ -300,14 +300,22 @@
   function periodHTML(interval, title) {
     const keys = Store.keysIn(interval.start, interval.end);
     const trade = Store.tradeSummary(keys);
+    const stats = Store.tradeStats(keys);
     const rates = Store.foodRates(keys);
     const training = Store.trainingSummary(keys);
     const sumRow = (label, value, total) =>
       `<div class="sum-row ${total ? 'total' : ''}"><span class="l">${label}</span><span class="v">${value}</span></div>`;
+    const yenOr = (v) => (v === null ? '—' : yen(v)); // 該当日なしは —
     return periodHead(title) +
       `<section class="card"><h2 class="card-title">Trade</h2>` +
         sumRow('Total', yen(trade.total), true) + '<hr class="sep">' +
         sumRow('Stock', yen(trade.stock)) + sumRow('Future', yen(trade.future)) +
+        '<hr class="sep">' +
+        sumRow('勝ち', `${stats.wins}日`) + sumRow('負け', `${stats.losses}日`) +
+        sumRow('勝ち日平均', yenOr(stats.avgWin)) + sumRow('負け日平均', yenOr(stats.avgLoss)) +
+        sumRow('最大損失', yenOr(stats.maxLoss)) + sumRow('1日平均', yenOr(stats.avgDay)) +
+        '<hr class="sep">' +
+        sumRow('勝ち逃げ', `${stats.profitStops}日`) + sumRow('本日終了', `${stats.lossStops}日`) +
       `</section>` +
       `<section class="card"><h2 class="card-title">Food</h2>` +
         (rates

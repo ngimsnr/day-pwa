@@ -342,6 +342,38 @@ const Store = (() => {
     return acc;
   }
 
+  // 期間内のトレード統計。損益 0 の日 (≒土日祝のノートレード日) は数えない。
+  // 勝ち逃げ・本日終了は tradeMode で日ごとに再判定して数える (閾値変更に自動追随)。
+  // 勝ち/負けが 0 日のときの平均は null (UI 側で「—」表示)。
+  function tradeStats(keys) {
+    const s = {
+      wins: 0, losses: 0, winSum: 0, lossSum: 0,
+      maxLoss: 0, profitStops: 0, lossStops: 0,
+    };
+    for (const key of keys) {
+      const day = state.days[key];
+      if (!day) continue;
+      const total = day.trade.stock + day.trade.future;
+      if (total === 0) continue;
+      if (total > 0) { s.wins++; s.winSum += total; }
+      else { s.losses++; s.lossSum += total; if (total < s.maxLoss) s.maxLoss = total; }
+      const { rule } = tradeMode(day);
+      if (rule && rule.id === 'profit-stop') s.profitStops++;
+      if (rule && rule.id === 'loss-stop') s.lossStops++;
+    }
+    const traded = s.wins + s.losses;
+    return {
+      wins: s.wins,
+      losses: s.losses,
+      avgWin: s.wins ? Math.round(s.winSum / s.wins) : null,
+      avgLoss: s.losses ? Math.round(s.lossSum / s.losses) : null,
+      maxLoss: s.losses ? s.maxLoss : null,
+      avgDay: traded ? Math.round((s.winSum + s.lossSum) / traded) : null,
+      profitStops: s.profitStops,
+      lossStops: s.lossStops,
+    };
+  }
+
   // 記録がある日の日次達成率の平均。1日もなければ null。
   function foodRates(keys) {
     const s = state.settings;
@@ -421,7 +453,7 @@ const Store = (() => {
     weekInterval, monthInterval, yearInterval, isoWeek,
     ensureDay, scheduleFor, template, addTemplate, updateTemplate, deleteTemplate, recentTemplates,
     tradeMode, TRADE_RULES,
-    pfcTotals, tradeSummary, foodRates, trainingSummary, isDayTrainingComplete, isDayComplete,
+    pfcTotals, tradeSummary, tradeStats, foodRates, trainingSummary, isDayTrainingComplete, isDayComplete,
     exportJSON, importJSON, exportCSV,
   };
 })();
