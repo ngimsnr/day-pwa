@@ -391,11 +391,17 @@ const Store = (() => {
       if (!day) continue;
       const total = day.trade.stock + day.trade.future;
       if (total === 0) continue;
-      if (total > 0) { s.wins++; s.winSum += total; }
-      else { s.losses++; s.lossSum += total; if (total < s.maxLoss) s.maxLoss = total; }
+      // ルール到達は「その群の中で」数える (勝ち日∩勝ち逃げ / 負け日∩本日終了)。
+      // +10万に触れてからマイナスへ転落した日はどちらにも入らない
       const { rule } = tradeMode(day);
-      if (rule && rule.id === 'profit-stop') s.profitStops++;
-      if (rule && rule.id === 'loss-stop') s.lossStops++;
+      if (total > 0) {
+        s.wins++; s.winSum += total;
+        if (rule && rule.id === 'profit-stop') s.profitStops++;
+      } else {
+        s.losses++; s.lossSum += total;
+        if (total < s.maxLoss) s.maxLoss = total;
+        if (rule && rule.id === 'loss-stop') s.lossStops++;
+      }
     }
     const traded = s.wins + s.losses;
     return {
