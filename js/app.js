@@ -336,7 +336,7 @@
         sumRow('Wins', days(stats.wins, stats.profitStops)) +
         sumRow('Losses', days(stats.losses, stats.lossStops)) +
         sumRow('Avg win', yenOr(stats.avgWin)) + sumRow('Avg loss', yenOr(stats.avgLoss)) +
-        sumRow('Max loss', yenOr(stats.maxLoss)) + sumRow('Daily avg', yenOr(stats.avgDay)) +
+        sumRow('Max loss', yenOr(stats.maxLoss)) + sumRow('Avg day', yenOr(stats.avgDay)) +
         sumRow('Profit factor', stats.pf === null ? '—' : stats.pf.toFixed(2)) +
       `</section>` +
       `<section class="card"><h2 class="card-title">Food</h2>` +
@@ -345,7 +345,7 @@
           : '<p class="empty">記録なし</p>') +
       `</section>` +
       `<section class="card"><h2 class="card-title">Training</h2>` +
-        sumRow('達成日数', `${training.completed} / ${training.scheduled} 日`) +
+        sumRow('Completed', `${training.completed} / ${training.scheduled} day${training.scheduled === 1 ? '' : 's'}`) +
       `</section>`;
   }
 
