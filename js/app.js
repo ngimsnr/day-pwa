@@ -67,12 +67,10 @@
   function renderTradeInputs(day) {
     // 描画時点の保存値は打ち終わった値とみなし、高値/安値に確定反映する
     Store.commitTradeWatermark(day);
-    for (const field of ['stock', 'future']) {
-      const value = day.trade[field];
-      const input = $('#in-' + field);
-      input.value = value === 0 ? '' : fmtNum(value);
-      setSign($('#sign-' + field), value < 0);
-    }
+    const value = day.trade.stock;
+    const input = $('#in-stock');
+    input.value = value === 0 ? '' : fmtNum(value);
+    setSign($('#sign-stock'), value < 0);
     renderTradeMode(day);
   }
 
@@ -134,7 +132,6 @@
     });
   }
   bindTrade('stock');
-  bindTrade('future');
 
   /* ---- Food ---- */
   function renderPFC(day) {
@@ -331,8 +328,6 @@
     return periodHead(title) +
       `<section class="card"><h2 class="card-title">Trade</h2>` +
         sumRow('Total', yenEn(trade.total), true) + '<hr class="sep">' +
-        sumRow('Stock', yenEn(trade.stock)) + sumRow('Future', yenEn(trade.future)) +
-        '<hr class="sep">' +
         sumRow('Wins', days(stats.wins, stats.profitStops)) +
         sumRow('Losses', days(stats.losses, stats.lossStops)) +
         sumRow('Avg win', yenOr(stats.avgWin)) + sumRow('Avg loss', yenOr(stats.avgLoss)) +
@@ -360,7 +355,7 @@
     cells += '<span></span>'.repeat(blanks);
     for (const key of keys) {
       const day = Store.state.days[key];
-      const total = day ? day.trade.stock + day.trade.future : 0;
+      const total = day ? day.trade.stock : 0;
       const cls = ['cal-cell', key === todayK ? 'today' : '', key === selectedCalKey ? 'selected' : ''].join(' ');
       cells += `<button class="${cls}" data-key="${key}">` +
         `<span class="cal-day">${Store.parseKey(key).getDate()}</span>` +
@@ -379,11 +374,8 @@
     let html = `<div class="period-head" id="day-detail"><h3>${titleFor(key)}</h3>${editBtn}</div>`;
     if (!day) return html + '<section class="card"><p class="empty">記録なし</p></section>';
 
-    const total = day.trade.stock + day.trade.future;
     html += `<section class="card"><h2 class="card-title">Trade</h2>` +
-      `<div class="sum-row total"><span class="l">Total</span><span class="v">${yen(total)}</span></div><hr class="sep">` +
-      `<div class="sum-row"><span class="l">Stock</span><span class="v">${yen(day.trade.stock)}</span></div>` +
-      `<div class="sum-row"><span class="l">Future</span><span class="v">${yen(day.trade.future)}</span></div></section>`;
+      `<div class="sum-row total"><span class="l">Total</span><span class="v">${yen(day.trade.stock)}</span></div></section>`;
 
     const items = Object.entries(day.food)
       .map(([id, qty]) => ({ t: Store.template(id), qty }))

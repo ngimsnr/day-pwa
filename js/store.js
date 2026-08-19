@@ -32,7 +32,7 @@ const Store = (() => {
     ];
   }
 
-  const DATA_VERSION = 9;
+  const DATA_VERSION = 10;
 
   /* ---- トレードルール (閾値の変更はここを編集) ----
      上にあるほど強い制限。複数成立時は最初に成立したものを表示する。
@@ -50,7 +50,7 @@ const Store = (() => {
   // モードは保存せず毎回導出する: 記録変更時の再判定と日付リセットが自動で成立する。
   // 未確定の現在値も高値/安値に織り込んで判定する (保存前でも帯は即反応する)
   function tradeMode(day) {
-    const total = day.trade.stock + day.trade.future;
+    const total = day.trade.stock;
     const m = {
       hi: Math.max(day.trade.hi != null ? day.trade.hi : total, total),
       lo: Math.min(day.trade.lo != null ? day.trade.lo : total, total),
@@ -62,7 +62,7 @@ const Store = (() => {
   // 入力のたびには呼ばない (打ち間違いの途中経過を焼き付けないため)。
   // 呼び出しは UI 側の安定タイミング: 入力が数秒止まったとき・画面を離れるとき・描画時
   function commitTradeWatermark(day) {
-    const total = day.trade.stock + day.trade.future;
+    const total = day.trade.stock;
     const hi = Math.max(day.trade.hi != null ? day.trade.hi : 0, total);
     const lo = Math.min(day.trade.lo != null ? day.trade.lo : 0, total);
     if (day.trade.hi !== hi || day.trade.lo !== lo) {
@@ -106,6 +106,7 @@ const Store = (() => {
     if (s.version === 6) migrateV7(s);
     if (s.version === 7) migrateV8(s);
     if (s.version === 8) migrateV9(s);
+    if (s.version === 9) migrateV10(s);
     return s;
   }
 
@@ -222,11 +223,24 @@ const Store = (() => {
   // 過去日は途中経過が残っていないため、最終値 (と日初の 0) で初期化する
   function migrateV9(s) {
     for (const day of Object.values(s.days)) {
-      const total = day.trade.stock + day.trade.future;
+      const total = day.trade.stock + (day.trade.future || 0);
       day.trade.hi = Math.max(0, total);
       day.trade.lo = Math.min(0, total);
     }
     s.version = 9;
+  }
+
+  // v10: 先物取引をやめたため Future を廃止し、Stock のみに (2026-08-19)。
+  // 過去の future の値も削除する。高値/安値は future を含んでいたので、
+  // v9 と同じ規則で stock だけから引き直す (stock 単独の途中経過は残っていないため)
+  function migrateV10(s) {
+    for (const day of Object.values(s.days)) {
+      delete day.trade.future;
+      const total = day.trade.stock;
+      day.trade.hi = Math.max(0, total);
+      day.trade.lo = Math.min(0, total);
+    }
+    s.version = 10;
   }
 
   let state;
@@ -297,7 +311,7 @@ const Store = (() => {
       const food = {};
       state.templates.filter((t) => t.isDefault).forEach((t) => { food[t.id] = 0; });
       day = state.days[key] = {
-        trade: { stock: 0, future: 0, hi: 0, lo: 0 },
+        trade: { stock: 0, hi: 0, lo: 0 },
         food,
         training: { done: {} },
       };
@@ -369,12 +383,11 @@ const Store = (() => {
   }
 
   function tradeSummary(keys) {
-    const acc = { stock: 0, future: 0 };
+    const acc = { total: 0 };
     for (const key of keys) {
       const day = state.days[key];
-      if (day) { acc.stock += day.trade.stock; acc.future += day.trade.future; }
+      if (day) acc.total += day.trade.stock;
     }
-    acc.total = acc.stock + acc.future;
     return acc;
   }
 
@@ -389,7 +402,7 @@ const Store = (() => {
     for (const key of keys) {
       const day = state.days[key];
       if (!day) continue;
-      const total = day.trade.stock + day.trade.future;
+      const total = day.trade.stock;
       if (total === 0) continue;
       // ルール到達は「その群の中で」数える (勝ち日∩勝ち逃げ / 負け日∩本日終了)。
       // +10万に触れてからマイナスへ転落した日はどちらにも入らない
@@ -482,10 +495,9 @@ const Store = (() => {
   }
 
   function exportCSV() {
-    const rows = [['date', 'stock', 'future', 'total']];
+    const rows = [['date', 'total']];
     for (const key of Object.keys(state.days).sort()) {
-      const t = state.days[key].trade;
-      rows.push([key, t.stock, t.future, t.stock + t.future]);
+      rows.push([key, state.days[key].trade.stock]);
     }
     return rows.map((r) => r.join(',')).join('\n');
   }
