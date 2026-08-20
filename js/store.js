@@ -96,8 +96,20 @@ const Store = (() => {
   }
 
   /* ---- 既存端末データの移行 (v1 → v2 → v3)。記録は保ったまま新形式へ ---- */
+  // データがコードより新しい = 古いキャッシュが居座っている状態。
+  // このまま動かすと存在しないフィールドを参照して集計が静かに NaN になるため
+  // (2026-08-19 に発生)、キャッシュを捨ててコードを取り直す。
+  function recoverFromStaleCode() {
+    if (typeof caches === 'undefined') return;
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => location.reload())
+      .catch(() => {});
+  }
+
   function migrate(s) {
     if (!s) return s;
+    if (s.version > DATA_VERSION) { recoverFromStaleCode(); return s; }
     if (s.version === 1) migrateV2(s);
     if (s.version === 2) migrateV3(s);
     if (s.version === 3) migrateV4(s);

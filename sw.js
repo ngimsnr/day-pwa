@@ -1,8 +1,8 @@
 'use strict';
 
-/* オフライン対応: アプリ本体を全てキャッシュし、以降はキャッシュ優先 + 裏で更新
-   (stale-while-revalidate)。デプロイ時は VERSION を上げる。 */
-const VERSION = 'day-v28';
+/* オフライン対応: アプリ本体を全てキャッシュし、ネットワーク優先で配信する
+   (オンラインなら常に最新、落ちているときだけキャッシュ)。デプロイ時は VERSION を上げる。 */
+const VERSION = 'day-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -32,18 +32,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* ネットワーク優先。オフラインのときだけキャッシュを使う。
+   以前はキャッシュ優先だったため、データ形式を変えた更新で「古いコード + 新しいデータ」
+   が成立し、集計が静かに NaN になる事故が起きた (2026-08-19)。
+   古いコードが居座れない構造にして再発を防ぐ。 */
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-      const fresh = fetch(event.request, { cache: 'no-cache' }).then((res) => {
+    fetch(event.request, { cache: 'no-cache' })
+      .then((res) => {
         if (res.ok) {
           const clone = res.clone();
           caches.open(VERSION).then((cache) => cache.put(event.request, clone));
         }
         return res;
-      }).catch(() => cached);
-      return cached || fresh;
-    })
+      })
+      .catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });
