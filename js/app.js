@@ -22,10 +22,11 @@
     const d = Store.parseKey(key);
     return `${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAY_JA[Store.mondayWeekday(d) - 1]})`;
   };
-  // 「3セット × 15回」/ 1セット物は「20分」だけ
+  // 「3セット × 15回」/ 1セット物は「20分」だけ。
+  // schedules は importJSON で任意の値を入れられるため、HTML に出す前にエスケープする
   const targetText = (item) => item.sets > 1
-    ? `${item.sets}セット × ${item.detail}`
-    : item.detail;
+    ? `${item.sets}セット × ${esc(item.detail)}`
+    : esc(item.detail || '');
 
   /* ================= Today ================= */
 
@@ -152,17 +153,19 @@
       .sort((a, b) => a.template.sortOrder - b.template.sortOrder);
 
     const row = (e) => {
+      // 食材名・分量はユーザーの自由入力。HTML に差し込む前に必ずエスケープする
+      const name = esc(e.template.name);
       const unit = e.template.unit
-        ? `<span class="food-unit">${e.template.unit}</span>` : '';
+        ? `<span class="food-unit">${esc(e.template.unit)}</span>` : '';
       const stepper = e.qty > 0
         ? `<span class="qty-ctl">` +
-          `<button class="qty-btn" data-id="${e.id}" data-q="-1" aria-label="${e.template.name}を減らす">−</button>` +
+          `<button class="qty-btn" data-id="${esc(e.id)}" data-q="-1" aria-label="${name}を減らす">−</button>` +
           `<span class="qty-val">×${e.qty}</span>` +
-          `<button class="qty-btn" data-id="${e.id}" data-q="1" aria-label="${e.template.name}を増やす">＋</button>` +
+          `<button class="qty-btn" data-id="${esc(e.id)}" data-q="1" aria-label="${name}を増やす">＋</button>` +
           `</span>`
         : '';
-      return `<li data-id="${e.id}" class="${e.qty > 0 ? '' : 'off'}" role="checkbox" aria-checked="${e.qty > 0}" aria-label="${e.template.name}">` +
-        `<span class="checkmark"></span><span class="food-name">${e.template.name}${unit}</span>${stepper}</li>`;
+      return `<li data-id="${esc(e.id)}" class="${e.qty > 0 ? '' : 'off'}" role="checkbox" aria-checked="${e.qty > 0}" aria-label="${name}">` +
+        `<span class="checkmark"></span><span class="food-name">${name}${unit}</span>${stepper}</li>`;
     };
 
     const defaults = entries.filter((e) => e.template.isDefault);
@@ -205,16 +208,17 @@
     }
     const done = day.training.done;
     let html = '';
-    if (schedule.label) html += `<p class="tr-menu-label">${schedule.label}</p>`;
+    if (schedule.label) html += `<p class="tr-menu-label">${esc(schedule.label)}</p>`;
     if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成</p>';
     html += schedule.items.map((item) => {
       const n = done[item.id] || 0;
+      const name = esc(item.name);
       const boxes = Array.from({ length: item.sets }, (_, i) =>
-        `<button class="tr-box ${i < n ? 'done' : ''}" data-item="${item.id}" data-i="${i}" aria-label="${item.name} セット${i + 1}" aria-pressed="${i < n}"></button>`
+        `<button class="tr-box ${i < n ? 'done' : ''}" data-item="${esc(item.id)}" data-i="${i}" aria-label="${name} セット${i + 1}" aria-pressed="${i < n}"></button>`
       ).join('');
       const target = targetText(item);
       return `<div class="tr-item">` +
-        `<div><span class="tr-name">${item.name}</span>${target ? `<span class="tr-target">${target}</span>` : ''}</div>` +
+        `<div><span class="tr-name">${name}</span>${target ? `<span class="tr-target">${target}</span>` : ''}</div>` +
         `<div class="tr-sets">${boxes}<span class="tr-count">${n} / ${item.sets}</span></div>` +
         `</div>`;
     }).join('');
@@ -381,17 +385,17 @@
       .map(([id, qty]) => ({ t: Store.template(id), qty }))
       .filter((e) => e.t)
       .sort((a, b) => a.t.sortOrder - b.t.sortOrder)
-      .map((e) => `<li class="${e.qty > 0 ? '' : 'off'}"><span class="mark">${e.qty > 0 ? '✓' : '−'}</span>${e.t.name}${e.qty > 1 ? ` ×${e.qty}` : ''}</li>`)
+      .map((e) => `<li class="${e.qty > 0 ? '' : 'off'}"><span class="mark">${e.qty > 0 ? '✓' : '−'}</span>${esc(e.t.name)}${e.qty > 1 ? ` ×${e.qty}` : ''}</li>`)
       .join('');
     html += `<section class="card"><h2 class="card-title">Food</h2><ul class="detail-food">${items || '<p class="empty">記録なし</p>'}</ul></section>`;
 
     const schedule = Store.scheduleFor(key);
     const trainingRows = (schedule && schedule.items.length && day.training)
       ? schedule.items.map((item) =>
-          `<div class="sum-row"><span class="l">${item.name}</span><span class="v">${day.training.done[item.id] || 0} / ${item.sets}</span></div>`
+          `<div class="sum-row"><span class="l">${esc(item.name)}</span><span class="v">${day.training.done[item.id] || 0} / ${item.sets}</span></div>`
         ).join('')
       : '<p class="empty">記録なし</p>';
-    html += `<section class="card"><h2 class="card-title">Training${schedule && schedule.label ? ` (${schedule.label})` : ''}</h2>${trainingRows}</section>`;
+    html += `<section class="card"><h2 class="card-title">Training${schedule && schedule.label ? ` (${esc(schedule.label)})` : ''}</h2>${trainingRows}</section>`;
     return html;
   }
 

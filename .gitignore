@@ -1,0 +1,5 @@
+# ローカル設定・一時ファイル (公開リポジトリなので明示的に除外する)
+.claude/settings.local.json
+.claude/launch.json
+.DS_Store
+*.log
