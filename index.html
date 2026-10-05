@@ -2,6 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<!-- 多層防御: 万一スクリプト注入が成立しても、外部との通信・外部コード読み込み・
+     インラインスクリプト・eval を全てブラウザ側で遮断する。
+     自分自身 ('self') 以外は一切許可しない。style 属性は使っていないので
+     'unsafe-inline' も不要 (PFC バーの幅は CSSOM で指定している)。
+     frame-ancestors は meta では無効なため、埋め込み防止は app.js 側で行う。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Day</title>
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">

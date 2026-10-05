@@ -497,12 +497,89 @@ const Store = (() => {
     return JSON.stringify(state, null, 1);
   }
 
-  function importJSON(text) {
-    const parsed = migrate(JSON.parse(text));
-    if (!parsed || parsed.version !== DATA_VERSION || !parsed.days || !parsed.templates) {
+  // 取り込むデータは「他人が作った可能性のある外部入力」として扱う。
+  // 形が違うものを弾くだけでなく、各フィールドを期待する型・範囲に正規化し、
+  // 想定外のキーは捨てる。これが XSS や表示崩れの入口にならないようにする。
+  const MONEY = 1e9; // 損益の上限 (10億円)。これを超える値は壊れた入力とみなす
+  const str = (v, max) => (typeof v === 'string' ? v : '').slice(0, max);
+  const num = (v, min, max) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : 0;
+  };
+  // 範囲外・数値でないものは既定値に倒す (クリップして無理に生かさない)
+  const numOr = (v, min, max, dflt) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= min && n <= max ? n : dflt;
+  };
+
+  function sanitizeState(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('形式が違います');
+    if (raw.version !== DATA_VERSION) throw new Error('形式が違います');
+    if (!Array.isArray(raw.templates) || !raw.days || typeof raw.days !== 'object') {
       throw new Error('形式が違います');
     }
-    state = parsed;
+
+    const templates = raw.templates.filter((t) => t && typeof t === 'object').slice(0, 500).map((t, i) => ({
+      id: str(t.id, 64) || 'imp-' + i,
+      name: str(t.name, 60),
+      unit: str(t.unit, 20),
+      p: num(t.p, 0, 10000), f: num(t.f, 0, 10000), c: num(t.c, 0, 10000),
+      isDefault: t.isDefault === true,
+      sortOrder: num(t.sortOrder, 0, 1e6),
+      lastUsedAt: num(t.lastUsedAt, 0, 1e15),
+    })).filter((t) => t.name);
+
+    const ids = new Set(templates.map((t) => t.id));
+    const days = {};
+    for (const [key, d] of Object.entries(raw.days).slice(0, 20000)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !d || typeof d !== 'object') continue;
+      const food = {};
+      if (d.food && typeof d.food === 'object') {
+        for (const [id, qty] of Object.entries(d.food)) {
+          if (ids.has(id)) food[id] = Math.round(num(qty, 0, 9));
+        }
+      }
+      const tr = d.trade && typeof d.trade === 'object' ? d.trade : {};
+      const stock = Math.round(num(tr.stock, -MONEY, MONEY));
+      const done = {};
+      if (d.training && d.training.done && typeof d.training.done === 'object') {
+        for (const [id, n] of Object.entries(d.training.done)) {
+          done[str(id, 64)] = Math.round(num(n, 0, 99));
+        }
+      }
+      days[key] = {
+        food,
+        // 高値/安値は検証できない派生値。範囲外なら最終値から引き直し、
+        // 必ず lo <= min(0, stock) かつ hi >= max(0, stock) を満たすよう整合させる
+        trade: {
+          stock,
+          hi: Math.max(Math.round(numOr(tr.hi, -MONEY, MONEY, Math.max(0, stock))), stock, 0),
+          lo: Math.min(Math.round(numOr(tr.lo, -MONEY, MONEY, Math.min(0, stock))), stock, 0),
+        },
+        training: { done },
+      };
+    }
+
+    const st = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
+    return {
+      version: DATA_VERSION,
+      settings: {
+        proteinTarget: numOr(st.proteinTarget, 1, 1000, 100),
+        fatTarget: numOr(st.fatTarget, 1, 1000, 60),
+        carbTarget: numOr(st.carbTarget, 1, 1000, 250),
+      },
+      templates,
+      // スケジュールは取り込まない。固定メニューを信頼済みの定義で作り直す
+      schedules: defaultSchedules(),
+      days,
+    };
+  }
+
+  function importJSON(text) {
+    if (typeof text !== 'string' || text.length > 20 * 1024 * 1024) {
+      throw new Error('形式が違います');
+    }
+    state = sanitizeState(migrate(JSON.parse(text)));
     save();
   }
 

@@ -138,12 +138,16 @@
   function renderPFC(day) {
     const t = Store.pfcTotals(day);
     const s = Store.state.settings;
-    const bar = (label, cur, target) => {
-      const w = Math.min(cur / Math.max(target, 1), 1) * 100;
-      return `<div class="pfc"><div class="pfc-head"><b>${label}</b><span>${Math.round(cur)} / ${target}</span></div><div class="pfc-track"><div class="pfc-fill" style="width:${w}%"></div></div></div>`;
-    };
-    $('#pfc-bars').innerHTML =
-      bar('P', t.p, s.proteinTarget) + bar('F', t.f, s.fatTarget) + bar('C', t.c, s.carbTarget);
+    // 幅は HTML の style 属性ではなく描画後に CSSOM で指定する。
+    // style 属性を使わないことで CSP の style-src を 'unsafe-inline' なしで厳格化できる
+    const bar = (label, cur, target) =>
+      `<div class="pfc"><div class="pfc-head"><b>${label}</b><span>${Math.round(cur)} / ${target}</span></div><div class="pfc-track"><div class="pfc-fill"></div></div></div>`;
+    const host = $('#pfc-bars');
+    host.innerHTML = bar('P', t.p, s.proteinTarget) + bar('F', t.f, s.fatTarget) + bar('C', t.c, s.carbTarget);
+    const widths = [
+      [t.p, s.proteinTarget], [t.f, s.fatTarget], [t.c, s.carbTarget],
+    ].map(([cur, target]) => Math.min(cur / Math.max(target, 1), 1) * 100);
+    host.querySelectorAll('.pfc-fill').forEach((el, i) => { el.style.width = widths[i] + '%'; });
   }
 
   function renderFoodLists(day) {
@@ -597,6 +601,13 @@
       active.blur();
     }
   });
+
+  // クリックジャッキング対策。GitHub Pages ではレスポンスヘッダを設定できず
+  // frame-ancestors も meta では効かないため、埋め込まれたら自分で抜け出す
+  if (window.top !== window.self) {
+    try { window.top.location = window.self.location; }
+    catch (e) { document.documentElement.innerHTML = ''; }
+  }
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');

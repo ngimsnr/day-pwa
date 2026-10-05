@@ -2,7 +2,7 @@
 
 /* オフライン対応: アプリ本体を全てキャッシュし、ネットワーク優先で配信する
    (オンラインなら常に最新、落ちているときだけキャッシュ)。デプロイ時は VERSION を上げる。 */
-const VERSION = 'day-v30';
+const VERSION = 'day-v31';
 const ASSETS = [
   './',
   './index.html',
