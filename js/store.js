@@ -21,18 +21,22 @@ const Store = (() => {
       { id: 'futsal', name: 'フットサル', sets: 1, detail: '' },
       { id: 'walk', name: 'ウォーキング', sets: 1, detail: '20分' },
     ];
+    // 毎日やるもの。required = anyOne の対象外とし、曜日に関係なく常に必須
+    const daily = () => [
+      { id: 'pao', name: 'PAO', sets: 3, detail: '30秒', required: true },
+    ];
     return [
-      { weekday: 1, label: 'Upper', anyOne: false, items: upper() },
-      { weekday: 2, label: 'Lower', anyOne: false, items: lower() },
-      { weekday: 3, label: null, anyOne: false, items: [{ id: 'walk', name: 'ウォーキング', sets: 1, detail: '20分' }] },
-      { weekday: 4, label: 'Upper', anyOne: false, items: upper() },
-      { weekday: 5, label: 'Lower', anyOne: false, items: lower() },
-      { weekday: 6, label: null, anyOne: true, items: weekend() },
-      { weekday: 7, label: null, anyOne: true, items: weekend() },
+      { weekday: 1, label: 'Upper', anyOne: false, items: upper().concat(daily()) },
+      { weekday: 2, label: 'Lower', anyOne: false, items: lower().concat(daily()) },
+      { weekday: 3, label: null, anyOne: false, items: [{ id: 'walk', name: 'ウォーキング', sets: 1, detail: '20分' }].concat(daily()) },
+      { weekday: 4, label: 'Upper', anyOne: false, items: upper().concat(daily()) },
+      { weekday: 5, label: 'Lower', anyOne: false, items: lower().concat(daily()) },
+      { weekday: 6, label: null, anyOne: true, items: weekend().concat(daily()) },
+      { weekday: 7, label: null, anyOne: true, items: weekend().concat(daily()) },
     ];
   }
 
-  const DATA_VERSION = 10;
+  const DATA_VERSION = 11;
 
   /* ---- トレードルール (閾値の変更はここを編集) ----
      上にあるほど強い制限。複数成立時は最初に成立したものを表示する。
@@ -119,6 +123,7 @@ const Store = (() => {
     if (s.version === 7) migrateV8(s);
     if (s.version === 8) migrateV9(s);
     if (s.version === 9) migrateV10(s);
+    if (s.version === 10) migrateV11(s);
     return s;
   }
 
@@ -253,6 +258,13 @@ const Store = (() => {
       day.trade.lo = Math.min(0, total);
     }
     s.version = 10;
+  }
+
+  // v11: トレーニングに PAO (1日3回・各30秒) を追加 (2026-10-10)。
+  // メニュー定義を最新に入れ替える。done の記録は item の id ごとなのでそのまま残る
+  function migrateV11(s) {
+    s.schedules = defaultSchedules();
+    s.version = 11;
   }
 
   let state;
@@ -465,7 +477,13 @@ const Store = (() => {
     if (!schedule || !schedule.items.length) return false;
     const done = (day && day.training && day.training.done) || {};
     const ok = (item) => (done[item.id] || 0) >= item.sets;
-    return schedule.anyOne ? schedule.items.some(ok) : schedule.items.every(ok);
+    // required の項目は曜日に関係なく全て必須。anyOne はそれ以外にだけ効かせる
+    // (これが無いと、土日に PAO だけで達成になってしまう)
+    const required = schedule.items.filter((i) => i.required);
+    const rest = schedule.items.filter((i) => !i.required);
+    if (!required.every(ok)) return false;
+    if (!rest.length) return true;
+    return schedule.anyOne ? rest.some(ok) : rest.every(ok);
   }
 
   // その日の「達成」= Training 達成 かつ Food を1つ以上チェック。

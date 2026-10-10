@@ -211,10 +211,7 @@
       return;
     }
     const done = day.training.done;
-    let html = '';
-    if (schedule.label) html += `<p class="tr-menu-label">${esc(schedule.label)}</p>`;
-    if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成</p>';
-    html += schedule.items.map((item) => {
+    const row = (item) => {
       const n = done[item.id] || 0;
       const name = esc(item.name);
       const boxes = Array.from({ length: item.sets }, (_, i) =>
@@ -225,7 +222,21 @@
         `<div><span class="tr-name">${name}</span>${target ? `<span class="tr-target">${target}</span>` : ''}</div>` +
         `<div class="tr-sets">${boxes}<span class="tr-count">${n} / ${item.sets}</span></div>` +
         `</div>`;
-    }).join('');
+    };
+    // 毎日やる項目 (required) は曜日メニューと分けて出す。
+    // 混ぜると anyOne の「どちらか1つで達成」が必須項目にも掛かって見えてしまう
+    const daily = schedule.items.filter((i) => i.required);
+    const menu = schedule.items.filter((i) => !i.required);
+
+    let html = '';
+    if (menu.length) {
+      if (schedule.label) html += `<p class="tr-menu-label">${esc(schedule.label)}</p>`;
+      if (schedule.anyOne) html += '<p class="tr-hint">どちらか1つで達成</p>';
+      html += menu.map(row).join('');
+    }
+    if (daily.length) {
+      html += `<p class="mini-label">毎日</p>` + daily.map(row).join('');
+    }
     body.innerHTML = html;
   }
   $('#training-body').addEventListener('click', (ev) => {
